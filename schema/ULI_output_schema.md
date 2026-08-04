@@ -173,7 +173,9 @@ Full field list: `schema/indicator_metadata.schema.json`. The five blocks:
 
 **`indicator`** — identity, classification, work package, `role` (`leaf` or
 `composite`), analyst, and `adapted_from` (the ULI review article the indicator
-came from). `adapted_from` is *provenance, not evidence*.
+came from, resolved from the workbook's article list by article number).
+`adapted_from` is *provenance, not evidence*, and should be verified against
+the actual paper before publication.
 
 **`rationale`** — the revised "reason this matters" statement, at least one
 `health_pathways` entry, an optional `arid_context` note, and an `evidence`

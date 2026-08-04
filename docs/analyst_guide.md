@@ -74,10 +74,20 @@ or **heat exposure**; if yours claims something else, be sure.
 
 ### 2.2 Find independent evidence for that pathway
 
-The ULI workbook records the article each indicator was *adapted from*. That is
+Your brief names the article the indicator was *adapted from*. That is
 **provenance, not evidence** — those articles mostly assert that an indicator
 belongs in a liveability index, without demonstrating a health benefit. Your
 job is to supply the missing link.
+
+**Check the provenance before you rely on it.** The reference is resolved from
+the workbook's "Article list" by article number, which is the reliable link.
+The workbook also has a free-text "Citation(s)" column, but it holds *secondary*
+citations — works cited **inside** the review articles — and for 75 of 79
+indicators it names no author of the article the indicator is attributed to. It
+is therefore not shown in your brief, and not carried into your metadata. The
+article list itself is the team's own record and has already needed correction,
+so verify the reference against the actual paper before you cite it. See
+[`citation_audit.csv`](../citation_audit.csv).
 
 Search for evidence that the **exposure** affects **health**, not that the
 indicator appears in other indices.

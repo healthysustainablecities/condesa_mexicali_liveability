@@ -298,7 +298,7 @@ MAP_QA = """
 # --------------------------------------------------------------------
 # Indicator briefs
 # --------------------------------------------------------------------
-def brief(record):
+def brief(record, articles=None):
     """Markdown brief reproducing everything the workbook records."""
     classification = ' · '.join(
         part
@@ -317,19 +317,33 @@ def brief(record):
         '',
     ]
 
+    # Provenance is resolved from the reviewed article list by article
+    # number.  The workbook's free-text 'Citation(s)' column is not
+    # shown: it holds secondary citations -- works cited inside the
+    # review articles -- and for 75 of 79 indicators it names no author
+    # of the article the indicator is attributed to.  Nor are the
+    # 'Effect size' and 'Methods sub-indices/measures' columns, both of
+    # which risk misattributing findings to the wrong study.
+    references, unknown = register.article_reference(
+        record.get('article_numbers'), articles
+    )
+    provenance = '; '.join(references)
+    if unknown:
+        provenance += (
+            (' — ' if provenance else '')
+            + 'article number(s) '
+            + ', '.join(str(n) for n in unknown)
+            + ' cited in the workbook but absent from the article list'
+        )
+
     bullets = [
         (
             'Lenses to deliver',
             ', '.join(record['lenses']) or 'none flagged in the workbook',
         ),
         ('Draft rationale (rewrite this)', record.get('reason_draft')),
-        ('Adapted from', record.get('source_citation')),
-        ('Effect reported there', record.get('source_effect_size')),
+        ('Adapted from', provenance or 'no source article recorded'),
         ('Pragmatic approach agreed', record.get('pragmatic_method')),
-        (
-            'Methods used in the literature',
-            record.get('methods_from_literature'),
-        ),
         ('Candidate data sources', record.get('potential_data_sources')),
         ('Team notes', record.get('notes')),
         ('Open questions raised', record.get('doubts')),
@@ -368,7 +382,7 @@ def brief(record):
     return '\n'.join(lines)
 
 
-def indicator_cells(record):
+def indicator_cells(record, articles=None):
     """The three working cells for one indicator."""
     code_name = record['indicator_code']
     indicator_id = record['indicator_id']
@@ -377,7 +391,7 @@ def indicator_cells(record):
     ] or ['quantity']
     first = f'{code_name}__{lenses[0]}'
     return [
-        markdown(brief(record)),
+        markdown(brief(record, articles)),
         code(
             f"""
             # 1. Documentation --------------------------------------------
@@ -1168,7 +1182,7 @@ def synthesis_notebook(package):
     ]
     return notebook(cells, package['name'])
 
-def package_notebook(package, records, reg):
+def package_notebook(package, records, reg, articles=None):
     code_name = package['code']
     lens_note = ''
     if any('equity' in r['lenses'] for r in records):
@@ -1234,7 +1248,7 @@ def package_notebook(package, records, reg):
             )
         )
         for record in records:
-            cells += indicator_cells(record)
+            cells += indicator_cells(record, articles)
 
     cells += [markdown(FINISH), code(FINISH_CODE), code(MAP_QA)]
     return notebook(cells, package['name'])
@@ -1260,6 +1274,7 @@ def main():
 
     os.makedirs(NOTEBOOK_DIR, exist_ok=True)
     reg = register.load()
+    articles = register.load_articles()
     packages = register.load_work_packages()
     grouped = register.by_work_package(reg)
 
@@ -1285,7 +1300,7 @@ def main():
         records = subset.to_dict('records')
         write(
             os.path.join(NOTEBOOK_DIR, _filename(package)),
-            package_notebook(package, records, reg),
+            package_notebook(package, records, reg, articles),
             args.force,
         )
 
@@ -1301,6 +1316,21 @@ def main():
             f'\nWARNING: {len(unassigned)} indicators are unassigned: '
             f'{sorted(unassigned["indicator_id"])}'
         )
+    audit = register.citation_audit(reg, articles)
+    unresolved = audit['unknown_article_numbers'].notna().sum()
+    disagree = (audit['names_a_cited_author'] == False).sum()  # noqa: E712
+    audit_path = os.path.join(PROJECT_DIR, 'citation_audit.csv')
+    try:
+        audit.to_csv(audit_path, index=False, encoding='utf-8-sig')
+        print(
+            f'\nCitation audit written to {os.path.basename(audit_path)}: '
+            f'{disagree} indicators whose free-text citation names no '
+            f'author of the article they cite; {unresolved} citing an '
+            'article number absent from the article list'
+        )
+    except PermissionError:
+        print('\nCould not write citation_audit.csv (file locked).')
+
     try:
         path = register.save(register=reg)
         print(f'\nRegister written to {os.path.basename(path)}')

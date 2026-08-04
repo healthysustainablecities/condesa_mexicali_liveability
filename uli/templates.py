@@ -235,15 +235,39 @@ def metadata_stub(indicator_id, analyst=None, reg=None):
     }
 
 
-def _adapted_from(record):
+def _adapted_from(record, articles=None):
+    """Resolve provenance from the reviewed article list, by number.
+
+    The workbook's free-text 'Citation(s)' column is deliberately not
+    used here.  It holds secondary citations -- works cited *inside*
+    the review articles -- and for 75 of 79 indicators it names no
+    author of the article the indicator is attributed to, so combining
+    the two produced confident-looking but wrong provenance.  The
+    ``Article #`` is the reliable link; everything else is resolved
+    from the article list.
+
+    Verify the resolved reference before publication: the article list
+    is the team's own record and has needed correction.
+    """
+    references, unknown = register.article_reference(
+        record.get('article_numbers'), articles
+    )
     parts = []
-    if record.get('article_numbers'):
-        parts.append(f'ULI review article(s) #{record["article_numbers"]}')
-    if record.get('source_citation'):
-        parts.append(str(record['source_citation']))
-    if record.get('source_effect_size'):
-        parts.append(f'Reported effect: {record["source_effect_size"]}')
-    return ' | '.join(parts) or None
+    if references:
+        parts.append('Adapted from ULI review article ' + '; '.join(references))
+    if unknown:
+        parts.append(
+            'Article number(s) '
+            + ', '.join(str(n) for n in unknown)
+            + ' are cited in the workbook but absent from the article '
+            'list; provenance unresolved'
+        )
+    if not parts:
+        parts.append(
+            'No source article recorded in the workbook; provenance '
+            'unknown'
+        )
+    return ' | '.join(parts)
 
 
 def todos(metadata, path=()):

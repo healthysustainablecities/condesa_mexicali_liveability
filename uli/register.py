@@ -23,6 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(HERE)
 WORKBOOK_GLOB = 'ULI_Tables by domain*.xlsx'
 SHEET = 'Indicators - Classified'
+ARTICLE_SHEET = 'Article list'
 
 # Positional names for the 33 columns of the classified sheet.
 #
@@ -237,6 +238,98 @@ def _unique_codes(register):
         f'{slug}_{indicator_id}' if counts[slug] > 1 else slug
         for slug, indicator_id in zip(slugs, register['indicator_id'])
     ]
+
+
+def load_articles(project_dir=None, path=None):
+    """Return the reviewed article list, indexed by article number.
+
+    This is the authoritative record of what each ``Article #`` refers
+    to.  The free-text 'Citation(s)' column of the classified sheet is
+    *not*: it holds secondary citations -- works cited inside the
+    review articles -- and in 75 of 79 cases names no author of the
+    article the indicator is attributed to.  Provenance is therefore
+    resolved from here, by number.
+    """
+    path = path or workbook_path(project_dir)
+    frame = pd.read_excel(path, ARTICLE_SHEET)
+    frame['Article #'] = pd.to_numeric(
+        frame['Article #'], errors='coerce'
+    )
+    frame = frame[frame['Article #'].notna()].copy()
+    frame['Article #'] = frame['Article #'].astype(int)
+    return frame.set_index('Article #')
+
+
+def article_numbers(value):
+    """Parse a workbook 'Article #' cell into a list of integers."""
+    return [int(n) for n in re.findall(r'\d+', str(value or ''))]
+
+
+def article_reference(value, articles=None):
+    """Resolve 'Article #' cell text to formatted references.
+
+    Returns ``(references, unknown_numbers)``.  Unknown numbers are
+    reported rather than silently dropped -- an indicator attributed to
+    an article that is not in the list is a data problem, not a
+    formatting one.
+    """
+    articles = load_articles() if articles is None else articles
+    references, unknown = [], []
+    for number in article_numbers(value):
+        if number not in articles.index:
+            unknown.append(number)
+            continue
+        row = articles.loc[number]
+        author = _clean(row.get('Author')) or 'Unknown author'
+        year = _clean(row.get('Year')) or 'n.d.'
+        title = _clean(row.get('title')) or ''
+        year = year.split('.')[0]
+        references.append(
+            f'#{number}: {author} ({year}), '
+            + (f'‘{" ".join(title.split())}’' if title else '')
+        )
+    return references, unknown
+
+
+def citation_audit(register=None, articles=None):
+    """Compare each indicator's Article # with its free-text citation.
+
+    The workbook carries both, and they disagree for most rows.  This
+    surfaces the disagreement so the team can correct the workbook;
+    nothing downstream relies on the free-text column.
+    """
+    register = load() if register is None else register
+    articles = load_articles() if articles is None else articles
+    rows = []
+    for record in register.itertuples():
+        references, unknown = article_reference(
+            record.article_numbers, articles
+        )
+        expected = {
+            _clean(articles.loc[n].get('Author'))
+            for n in article_numbers(record.article_numbers)
+            if n in articles.index
+        }
+        citation = ' '.join(str(record.source_citation or '').split())
+        named = set(re.findall(r'\b[A-Z][a-z]{3,}\b', citation))
+        rows.append(
+            {
+                'indicator_id': record.indicator_id,
+                'indicator': record.indicator,
+                'article_numbers': record.article_numbers,
+                'resolved_from_article_list': '; '.join(references),
+                'unknown_article_numbers': (
+                    '; '.join(str(n) for n in unknown) or None
+                ),
+                'workbook_citation_text': citation or None,
+                'names_a_cited_author': (
+                    bool(expected & named)
+                    if expected and citation
+                    else None
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def get(indicator_id, register=None):

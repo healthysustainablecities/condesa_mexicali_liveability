@@ -340,6 +340,53 @@ readers, so they are separate documents:
 
 ---
 
+## 13. Citation provenance: resolved by article number
+
+The metadata stub originally built its `adapted_from` field by concatenating
+three workbook columns: the `Article #`, the free-text `Citation(s)` text, and
+the reported effect size. Those columns disagree, and joining them produced
+provenance that read as authoritative and was frequently wrong — for #136
+*Annual average nitrogen dioxide*, an attribution to article #13 sat beside a
+citation naming Lowe et al., who are not its authors.
+
+An audit of all 82 indicators found this is systemic, not incidental:
+
+- **75 of 79** indicators with both fields have a free-text citation naming no
+  author of the article they are attributed to. The column holds *secondary*
+  citations — works cited **inside** the review articles (Lowe 2015,
+  Saitluanga 2014, Ghasemi 2024, Yang 2021) — not the article itself.
+- **1** indicator (#91, access to public green space) cites article #35, which
+  does not exist in the article list.
+- **1** indicator (#0, the index itself) has no article number.
+
+Decided:
+
+1. **The `Article #` is the authoritative link.** `adapted_from` is now
+   resolved from the "Article list" sheet by number, formatted as
+   `#13: Alderton (2021), 'title'`. Numbers absent from the list are reported
+   as unresolved rather than silently dropped.
+2. **The free-text `Citation(s)` column is not used** — not in the metadata,
+   not in the notebook briefs. It is preserved in the workbook and surfaced in
+   the audit, but nothing downstream depends on it.
+3. **`Effect size` and `Methods sub-indices/measures` are omitted** from the
+   briefs entirely. Both attach findings to a study the row may not correspond
+   to, and neither is needed: analysts supply their own effect sizes from
+   independent evidence.
+4. **`citation_audit.csv` is regenerated on every build**, listing each
+   indicator's resolved reference, the free-text citation, and whether the two
+   agree — so the workbook can be corrected from it.
+5. The article list has itself needed correction (authors of #12/#13 and
+   #18/#19 were transposed; #15's author was recorded by given name). The guide
+   therefore tells analysts to **verify the reference against the actual paper**
+   before citing it.
+
+The underlying lesson is narrower than "check citations": *do not synthesise a
+single authoritative-looking string out of fields that have not been
+reconciled.* Presenting the article number alone would have surfaced the
+disagreement instead of hiding it.
+
+---
+
 ## 12. Still open
 
 1. **Leads for WP03-WP08.** Everything else is ready; the work packages are
@@ -353,6 +400,9 @@ readers, so they are separate documents:
 5. **Household size for the Condesa assumption** — confirm the Mexicali
    municipality mean against the INEGI 2020 tabulation rather than the
    constant currently in the code (section 4).
+6. **Article list verification** — work through `citation_audit.csv` and
+   confirm each article's author, year and title against the paper (section
+   13). Some entries have already been corrected; the rest are unverified.
 
 ---
 

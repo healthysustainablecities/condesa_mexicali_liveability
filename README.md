@@ -31,6 +31,7 @@ version **1.0.0**.
 ```
 ULI_Tables by domain ... .xlsx   Source of truth for the indicator set
 indicator_register.csv           Generated: flat indicator list + assignments
+citation_audit.csv               Generated: Article # vs free-text citation
 
 schema/         The output specification and JSON Schemas
 docs/           Analyst guide
