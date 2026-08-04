@@ -34,11 +34,38 @@ BATCH_THRESHOLD = 12
 # --------------------------------------------------------------------
 # Minimal nbformat v4 writer (avoids a dependency for a JSON file)
 # --------------------------------------------------------------------
+def _dedent(text):
+    """Strip the template's own indentation from a cell body.
+
+    ``textwrap.dedent`` removes only the whitespace *common to every
+    line*, which is the wrong rule here: these templates interpolate
+    multi-line values (a table of work packages, a list of indicators)
+    that are built at zero indent.  One such line drops the common
+    prefix to nothing, dedent becomes a no-op, and every other line
+    keeps its twelve spaces -- which Markdown then renders as a code
+    block.
+
+    So take the indent of the first non-blank line as the template's
+    own, and strip exactly that from the lines that carry it. Lines
+    already at zero indent are left alone, and lines indented further
+    (nested lists, continuations) keep the difference.
+    """
+    lines = text.split('\n')
+    first = next((line for line in lines if line.strip()), '')
+    prefix = first[: len(first) - len(first.lstrip())]
+    if not prefix:
+        return text
+    return '\n'.join(
+        line[len(prefix):] if line.startswith(prefix) else line
+        for line in lines
+    )
+
+
 def markdown(text):
     return {
         'cell_type': 'markdown',
         'metadata': {},
-        'source': _lines(textwrap.dedent(text).strip('\n')),
+        'source': _lines(_dedent(text).strip('\n')),
     }
 
 
@@ -48,7 +75,7 @@ def code(text):
         'execution_count': None,
         'metadata': {},
         'outputs': [],
-        'source': _lines(textwrap.dedent(text).strip('\n')),
+        'source': _lines(_dedent(text).strip('\n')),
     }
 
 
@@ -194,8 +221,8 @@ BRIEFING = """
     number for every unit of geography, and the documentation that
     makes that number defensible.
 
-    Work in this order. Steps 1 and 2 are the ones people skip and
-    then have to redo.
+    Work in this order. Steps 1 and 2 shape everything after
+    them, so they are worth doing before opening any data.
 
     | | Step | Where to look |
     |---|---|---|
@@ -208,10 +235,10 @@ BRIEFING = """
 
     Three things worth knowing now:
 
-    - **The evidence is the point.** The article an indicator was
-      adapted from shows it has been *used*, not that it *matters*.
-      Supplying that missing link is the substantive contribution
-      asked of you.
+    - **The evidence matters as much as the calculation.** The
+      article an indicator was adapted from shows it has been *used*,
+      not that it affects health. Supplying that link is a substantive
+      part of the work.
     - **Deliver natural units.** No normalising, no reverse-coding —
       set `direction` instead. The index does that once, centrally.
     - **Cover Condesa.** Compute on `grid_100m` where your data allow
@@ -219,9 +246,9 @@ BRIEFING = """
       where `manzana` reaches only 33. The validator treats poor
       Condesa coverage as an error.
 
-    New to this? Run [`00b_cookbook.ipynb`](00b_cookbook.ipynb) first
-    — it is eight worked examples on data already in the repository,
-    and takes about twenty minutes.
+    New to this? Part 1 of [`00b_cookbook.ipynb`](00b_cookbook.ipynb)
+    works one indicator through the whole process, on data already in
+    the repository.
 """
 
 
@@ -739,6 +766,13 @@ def batch_cells(package, records):
 def overview_notebook(reg, packages):
     """A short orientation page.  Deliberately short."""
     counts = reg['work_package'].value_counts()
+    # Row 0 is the composite index itself rather than an indicator,
+    # and excluded indicators are out of scope.
+    in_scope = (
+        len(reg)
+        - int((reg['indicator_id'] == 0).sum())
+        - int(counts.get(register.EXCLUDED, 0))
+    )
     rows = '\n'.join(
         f'| `{p["code"][:4]}` | {p["name"]} | {p["lead"]} | '
         f'{counts.get(p["code"], 0)} |'
@@ -758,7 +792,7 @@ def overview_notebook(reg, packages):
 
             The local team reviewed the liveability literature,
             classified the candidate indicators, and narrowed them to
-            **{len(reg) - 2}** that are plausibly relevant to health in
+            **{in_scope}** that are plausibly relevant to health in
             Mexicali and feasible with available data. Calculation is
             split across work packages:
 
@@ -768,23 +802,22 @@ def overview_notebook(reg, packages):
 
             ---
 
-            ## Your first hour
+            ## Getting started
 
-            1. **Run the setup check below.** If it prints two ticks,
-               you are ready.
-            2. **Work through
-               [`00b_cookbook.ipynb`](00b_cookbook.ipynb)** — eight
-               worked examples on data already in this repository,
-               about twenty minutes. This is the fastest way in.
+            1. **Run the setup check below.** It reports whether the
+               reference geographies and the indicator register are
+               readable.
+            2. **Work through Part 1 of
+               [`00b_cookbook.ipynb`](00b_cookbook.ipynb)**, which
+               takes one indicator from the workbook to a finished
+               deliverable using data already in this repository.
             3. **Open your work package notebook** (`01_` to `08_`)
                and read the brief for your first indicator.
-            4. **Skim [the analyst guide](../docs/analyst_guide.md)**
-               — sections 2 and 5 especially. The rest is reference;
-               come back to it when a question arises.
+            4. **Read [the analyst guide](../docs/analyst_guide.md)**
+               sections 2 and 5. The rest is reference.
 
-            You do not need to read the schema, the plan, or the
-            decisions record to start. They are there for when you
-            need them.
+            The schema, the plan and the decisions record are there
+            when you need them; you do not need them to start.
 
             ---
 
@@ -799,10 +832,10 @@ def overview_notebook(reg, packages):
                 <indicator_code>_metadata.yml    # why, from what, how
             ```
 
-            The metadata is not paperwork. The index cannot use a
-            value without knowing whether high is good or bad, and the
-            platform cannot publish a layer without knowing its
-            licence.
+            The metadata is used, not filed. The index needs
+            `direction` to know whether high is good or bad, and
+            Reimagina Urbana needs the licence to know whether a layer
+            can be published.
             """
         ),
         markdown(
@@ -909,8 +942,12 @@ DEMO = """
     DEMO = os.path.join('..', 'data', 'demo')
     GPKG = os.path.join(DEMO, 'demo.gpkg')
 
-    ANALYST_DETAILS = {'name': 'Cookbook demo', 'email': None,
-                       'institution': None}
+    # Normally your own details; this notebook is a demonstration.
+    ANALYST_DETAILS = {
+        'name': 'Cookbook demo',
+        'email': None,
+        'institution': None,
+    }
 
     print('uli', uli.SCHEMA_VERSION)
     print('reference geographies:', uli.geography.available())
@@ -918,7 +955,7 @@ DEMO = """
 
 
 def _recipe(number, title, when, used_by, cell, note=None):
-    """One cookbook entry: what it is for, the code, the catch."""
+    """One recipe: what it is for, the code, the catch."""
     cells = [
         markdown(
             f"""
@@ -938,33 +975,30 @@ def _recipe(number, title, when, used_by, cell, note=None):
 
 
 def cookbook_notebook():
-    """Worked examples of every calculation shape, on real data."""
+    """One indicator worked end to end, then the recipes."""
     cells = [
         markdown(
             f"""
-            # Cookbook — worked examples
+            # Cookbook
 
-            Eight recipes covering the shapes almost every ULI
-            indicator takes. Each one runs as-is on the small demo
-            dataset in `data/demo/`, so you can execute this whole
-            notebook now, before you have any data of your own.
+            Part 1 takes a single indicator from a row in the workbook
+            to a finished, validated deliverable — including the
+            evidence, the data licensing, the map you use to check it,
+            and how you hand it back.
 
-            **You do not need to read this end to end.** Find the
-            recipe that matches your data — points, polygons, lines,
-            a raster, a table — copy it, and change the inputs.
+            Part 2 is a set of recipes for the other shapes your data
+            might take. Once you have been through Part 1, a recipe is
+            just a replacement for one step.
 
-            | Your data looks like | Recipe |
+            Everything runs on the demo data in `data/demo/`, so you
+            can execute this notebook now, before you have data of your
+            own.
+
+            | | |
             |---|---|
-            | Points (shops, clinics, bus stops) | 1 (how many), 2 (how far) |
-            | Polygons (parks, flood zones, land use) | 3 (how much cover), 4 (which class) |
-            | Lines (streets, cycle lanes) | 5 |
-            | A raster (NDVI, temperature, pollution) | 6 |
-            | A table of values per AGEB or manzana | 7 |
-            | One number for the whole city | 8 |
-
-            After the recipes, section 9 shows the four steps that are
-            **the same for every indicator**, and section 10 walks one
-            indicator all the way to a delivered file.
+            | **Part 1** | One indicator, start to finish |
+            | **Part 2** | Recipes: points, polygons, lines, rasters, tables |
+            | **Part 3** | Reference: aggregation methods, error messages |
 
             Schema version {vocab.SCHEMA_VERSION}.
             """
@@ -973,18 +1007,18 @@ def cookbook_notebook():
             """
             ## The demo data
 
-            Real Mexicali layers, cut down so they are quick and
-            committed to the repository — see
-            [`data/demo/README.md`](../data/demo/README.md) for
-            provenance. **They are for learning the tooling, not for
-            producing indicator values.** One column
-            (`has_sidewalk_FABRICATED`) is invented outright.
+            Real Mexicali layers, cut down so they are quick and small
+            enough to commit — see
+            [`data/demo/README.md`](../data/demo/README.md) for what
+            each one is and where it came from. They are here to
+            demonstrate the tooling; they are not a basis for indicator
+            values, and one column (`has_sidewalk_FABRICATED`) is
+            invented.
             """
         ),
         code(DEMO),
         code(
             """
-            # What is in the demo geopackage?
             import pyogrio
             for name, kind in pyogrio.list_layers(GPKG):
                 layer = gpd.read_file(GPKG, layer=name)
@@ -992,24 +1026,602 @@ def cookbook_notebook():
                       f'{[c for c in layer.columns if c != "geometry"]}')
             """
         ),
+    ]
+
+    cells += _part_one()
+    cells += _part_two()
+    cells += _part_three()
+    return notebook(cells, 'ULI cookbook')
+
+
+def _part_one():
+    """The full process, on one real indicator."""
+    return [
         markdown(
             """
-            ### The one thing to understand first
+            ---
+            ---
+            # Part 1 — One indicator, start to finish
 
-            Every recipe produces the **same simple thing**: a table
-            with two columns, `geo_id` and `value` — one row per unit
-            of whichever geography you computed on.
+            The indicator: **#187, access to public open space**,
+            measured as the share of each area that is public open
+            space.
 
+            Eleven steps. Steps 1–4 are desk work and take longer than
+            the code.
+            """
+        ),
+        markdown(
+            """
+            ## 1. Read what the team already recorded
+
+            Your work package notebook has a brief for each indicator,
+            and `uli.metadata_stub()` pre-fills a metadata document
+            from the same source. Start there rather than from a blank
+            page.
+            """
+        ),
+        code(
+            """
+            meta = uli.metadata_stub(187, analyst=ANALYST_DETAILS)
+
+            print('indicator :', meta['indicator']['name_en'])
+            print('domain    :', meta['indicator']['domains'])
+            print('lenses    :', [m['lens'] for m in meta['measures']])
+            print()
+            print('adapted from:')
+            print(' ', meta['indicator']['adapted_from'][:140])
+            print()
+            print('draft rationale from the workbook:')
+            print(' ', meta['rationale']['statement'][:200])
+            """
+        ),
+        markdown(
+            """
+            The `adapted_from` reference is **provenance, not
+            evidence**: it records where the indicator idea came from,
+            not that it affects health. Supplying that link is step 2,
+            and it is the part of the job only you can do.
+
+            ## 2. Write the causal pathway
+
+            Before searching for anything, finish this sentence:
+
+            > *[what I measure]* changes *[a mechanism]*, which changes
+            > *[a behaviour or exposure]*, which affects *[a health
+            > outcome]*.
+
+            For this indicator:
+
+            > **Public open space near where people live** provides
+            > somewhere to walk, exercise and meet others, and offers
+            > shade and cooler surfaces, which increases recreational
+            > physical activity and social contact and reduces heat
+            > exposure, which is associated with better mental health,
+            > lower cardiovascular risk and lower heat-related illness.
+
+            That sentence determines everything downstream: which
+            evidence is relevant, which threshold to use, and whether
+            the measure you are about to compute is the right one. If
+            it is hard to write, that usually means the indicator needs
+            discussion with the group rather than more GIS.
+
+            The mechanisms are recorded as `health_pathways`, using the
+            controlled list:
+            """
+        ),
+        code(
+            """
+            for key, description in uli.vocab.HEALTH_PATHWAYS.items():
+                print(f'{key:32s} {description}')
+            """
+        ),
+        markdown(
+            """
+            ## 3. Find evidence for that pathway
+
+            You need at least one citation, **independent of the
+            article the indicator was adapted from**, showing a
+            meaningful health or wellbeing benefit.
+
+            Where to look: PubMed, Scopus, Google Scholar, WHO
+            publications, *Environment International*, *Health &
+            Place*, *Journal of Transport & Health*. Prefer
+            meta-analyses and systematic reviews, then reputable
+            guidance, then cohort studies.
+
+            Search the **exposure and the outcome**, not the indicator
+            name — for example
+            `"green space" AND (mortality OR "mental health") AND
+            (review OR meta-analysis)`.
+
+            Record what the source actually says, including the effect
+            size and its uncertainty where one is given. Some sources,
+            including narrative reviews and guidance documents, do not
+            report a pooled estimate; say so rather than inventing one.
+
+            > The reference below is real and is used to show the
+            > shape of the record. **Read your own sources and record
+            > what they say** — do not copy this one across.
+            """
+        ),
+        code(
+            """
+            meta['rationale']['statement'] = (
+                'Public open space within walking distance gives '
+                'residents somewhere to walk, exercise and meet '
+                'others, and provides shade and cooler surfaces in a '
+                'city where summer heat limits time outdoors. Access '
+                'is associated with higher recreational physical '
+                'activity, more social contact and better mental '
+                'health. In Mexicali the benefit is likely '
+                'conditional on shade and water provision, and on the '
+                'time of day the space can be used; households '
+                'without air conditioning or a car are least able to '
+                'substitute other options.'
+            )
+
+            meta['rationale']['health_pathways'] = [
+                'physical_activity_recreation',
+                'social_interaction',
+                'heat_exposure',
+                'restoration_and_mental_health',
+            ]
+
+            meta['rationale']['arid_context'] = (
+                'Most green space and health evidence comes from '
+                'temperate cities. In Mexicali, summer maxima above '
+                '45 C plausibly make shade, water and opening hours '
+                'more binding than distance. Read alongside the WP02 '
+                'thermal comfort outputs; unshaded open space may '
+                'deliver much less benefit than the same area of '
+                'shaded space.'
+            )
+
+            meta['rationale']['evidence'] = [
+                {
+                    'claim': (
+                        'Access to urban green space is associated '
+                        'with improved mental health and wellbeing, '
+                        'reduced cardiovascular morbidity and '
+                        'increased levels of physical activity.'
+                    ),
+                    'citation': (
+                        'World Health Organization Regional Office '
+                        'for Europe (2016). Urban green spaces and '
+                        'health: a review of evidence. Copenhagen: '
+                        'WHO Regional Office for Europe.'
+                    ),
+                    'doi': None,
+                    'url': ('https://www.who.int/europe/publications/'
+                            'i/item/WHO-EURO-2016-3352-43111-60341'),
+                    'evidence_type': 'expert_guidance',
+                    'population': (
+                        'General urban populations, predominantly '
+                        'European studies.'
+                    ),
+                    'exposure': 'Access to urban green space',
+                    'outcome': (
+                        'Mental health, cardiovascular morbidity, '
+                        'physical activity'
+                    ),
+                    'effect': (
+                        'Narrative review; consistent direction of '
+                        'association reported across studies, no '
+                        'pooled effect estimate given.'
+                    ),
+                    'threshold_support': (
+                        'The review discusses accessibility within '
+                        'walking distance rather than endorsing a '
+                        'single distance; the project default of 500 '
+                        'm is used here and should be revisited '
+                        'against Mexicali-specific evidence.'
+                    ),
+                    'notes': (
+                        'Used to demonstrate the record. Supplement '
+                        'with a quantitative review before '
+                        'publication.'
+                    ),
+                },
+            ]
+
+            print(len(meta['rationale']['evidence']), 'evidence entry')
+            """
+        ),
+        markdown(
+            """
+            ## 4. Find the data, and record it as you go
+
+            Record the source **when you download it**, not months
+            later when you have forgotten the version and the date.
+
+            Five things are required, and the validator will ask for
+            them: citation, URL, date retrieved, licence, and whether
+            the source covers Condesa. `redistributable` matters
+            because Reimagina Urbana cannot publish a layer whose
+            licence forbids it.
+
+            Put the raw file in `data/raw/<your_work_package>/` and do
+            not edit it by hand — every change should happen in code,
+            so it can be repeated. Raw data is **not** committed: it
+            can be large, and licences often do not allow
+            redistribution.
+
+            Likely sources for this project: INEGI (censo, ENIGH,
+            ENVI, DENUE, marco geoestadístico), the IMIP Mexicali
+            geovisor, municipal open data, SEMARNAT and the Mexicali
+            air quality network, CONAGUA, OpenStreetMap, Sentinel-2
+            and Landsat, GHSL, WorldPop.
+            """
+        ),
+        code(
+            """
+            meta['data_sources'] = [
+                {
+                    'name': 'Public open space, Mexicali',
+                    'custodian': 'OpenStreetMap contributors',
+                    'citation': (
+                        'OpenStreetMap contributors (2026). Geofabrik '
+                        'Mexico extract, 10 April 2026. Public open '
+                        'space derived using the GHSCI open space '
+                        'method.'
+                    ),
+                    'url': 'https://download.geofabrik.de/',
+                    'date_retrieved': '2026-04-10',
+                    'licence': 'ODbL-1.0',
+                    'licence_url': ('https://opendatacommons.org/'
+                                    'licenses/odbl/'),
+                    'redistributable': True,
+                    'spatial_resolution': 'vector polygons',
+                    'temporal_coverage': '2026',
+                    'condesa_coverage': 'full',
+                    'notes': (
+                        'Volunteered data. Completeness varies and is '
+                        'likely lower in recently developed areas, '
+                        'which matters for Condesa.'
+                    ),
+                },
+            ]
+
+            # What is still outstanding at this point?
+            for path in uli.todos(meta):
+                print(path)
+            """
+        ),
+        markdown(
+            """
+            ## 5. Compute the indicator
+
+            One call. The helper is chosen by the shape of the data —
+            polygons whose coverage you want, so `areal_share` (Part 2,
+            Recipe 3).
+
+            Compute at the finest scale your data genuinely support.
+            Here that is the 100 m grid, which also means the result
+            reaches all 40 Condesa fraccionamientos rather than the 33
+            a manzana-based calculation would reach.
+            """
+        ),
+        code(
+            """
+            open_space = gpd.read_file(GPKG, layer='open_space')
+            print(f'{len(open_space)} open space polygons, '
+                  f'{open_space.geometry.area.sum() / 1e6:.1f} km2 total')
+
+            native = uli.areal_share(open_space, 'grid_100m',
+                                     as_percentage=True)
+            print()
+            print(native.head())
+            print()
+            print(native['value'].describe().round(2))
+            """
+        ),
+        markdown(
+            """
+            `native` is the whole output of the calculation: one row
+            per 100 m cell, `geo_id` and `value`. Everything from here
+            is bookkeeping.
+
+            ## 6. Record how you did it
+
+            The method summary should let someone else reproduce the
+            number from the sources you documented. Write it now, while
+            you remember the details.
+            """
+        ),
+        code(
+            """
+            meta['method']['summary'] = (
+                'Public open space polygons were dissolved to remove '
+                'overlaps, intersected with each 100 m grid cell, and '
+                'the intersecting area divided by the cell area to '
+                'give the percentage of each cell that is public open '
+                'space. Cell values were aggregated to coarser '
+                'reporting geographies as an area-weighted mean, '
+                'since open space coverage is a property of land '
+                'rather than of people.'
+            )
+            meta['method']['software'] = ['python', 'geopandas', 'uli']
+            meta['method']['notebook'] = 'notebooks/00b_cookbook.ipynb'
+            meta['method']['assumptions'] = [
+                'All mapped public open space is publicly accessible '
+                'in practice, which OpenStreetMap does not verify.',
+            ]
+            meta['method']['limitations'] = [
+                'Area of open space says nothing about its quality, '
+                'shade, water provision or opening hours, which in an '
+                'arid city plausibly matter more than area.',
+            ]
+            meta['method']['condesa_treatment'] = (
+                'Computed natively on the 100 m grid, which covers '
+                'the full Condesa extent. OpenStreetMap coverage of '
+                'the new development is likely incomplete, so a low '
+                'value there may reflect mapping rather than absence.'
+            )
+            meta['indicator']['status'] = 'draft'
+            print('recorded')
+            """
+        ),
+        markdown(
+            """
+            ## 7. Fill in the other geographies
+
+            You computed at one scale; the project reports at five.
+            `harmonise` produces them all from your single
+            calculation, using the shared crosswalk, and records how
+            each value got there.
+
+            `method` describes what the value *is*, which determines
+            how it should be combined:
+
+            | Your measure is… | Use |
+            |---|---|
+            | something people experience (access, exposure, comfort) | `population_weighted_mean` |
+            | a property of land (cover, temperature, land use) | `area_weighted_mean` |
+            | a property of streets | `length_weighted_mean` |
+            | a count of things | `sum` |
+            """
+        ),
+        code(
+            """
+            results = uli.harmonise(
+                native,
+                native_scale='grid_100m',
+                method='area_weighted_mean',
+            )
+
+            results.groupby(['geo_level', 'aggregation_method']).agg(
+                units=('value', 'size'),
+                with_value=('value', 'count'),
+                median=('value', 'median'),
+            ).round(2)
+            """
+        ),
+        markdown(
+            """
+            Note `manzana` is marked `replicated`: manzanas are
+            smaller than 100 m cells, so those values carry no
+            variation at that scale. That is recorded honestly rather
+            than hidden, and the index step knows to discount it.
+
+            ## 8. Describe the measure and label the rows
+
+            A **measure** is one specific way of measuring the
+            indicator. This indicator could be measured several ways —
+            distance to the nearest open space, count within 500 m,
+            percentage cover. Here there is one, so the stub's other
+            lenses are dropped.
+            """
+        ),
+        code(
+            """
+            measure = meta['measures'][0]
+            measure.update(
+                id='access_to_public_open_space__density_percent_cover',
+                lens='density',
+                name_en='Public open space, percentage of area',
+                name_es='Espacio público abierto, porcentaje del área',
+                description=(
+                    'Percentage of the unit covered by public open '
+                    'space polygons.'),
+                unit='percent',
+                value_type='percentage',
+                direction='higher_is_better',
+                denominator_type='area_sqkm',
+                coverage_basis='area',
+                temporal_basis='point_in_time',
+                native_scale='grid_100m',
+                aggregation_method='area_weighted_mean',
+                include_in_index=True,
+                index_notes=(
+                    'Highly skewed: most units have no open space at '
+                    'all. Consider a transform or a threshold form.'),
+            )
+            meta['measures'] = [measure]
+
+            results = uli.label(results, meta, measure['id'])
+            results.head(3)
+            """
+        ),
+        markdown(
+            """
+            Those twelve columns are the delivery format, and they are
+            the same for every indicator in the project. `coverage`,
+            `quality_flag` and `native_scale` are what let someone
+            else judge how much to trust a given row.
+
+            ## 9. Map it before you believe it
+
+            The fastest check on a spatial indicator is to look at it.
+            """
+        ),
+        code(
+            """
+            grid = uli.geography.load('grid_100m').merge(
+                results.query("geo_level == 'grid_100m'"),
+                on='geo_id', how='left')
+
+            fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+
+            grid.plot(column='value', ax=axes[0], legend=True,
+                      vmax=grid['value'].quantile(0.99),
+                      missing_kwds={'color': 'lightgrey'})
+            uli.geography.load('condesa_fraccionamiento').boundary.plot(
+                ax=axes[0], color='crimson', linewidth=0.8)
+            axes[0].set_title('% public open space, 100 m grid '
+                              '(Condesa outlined)')
+            axes[0].set_axis_off()
+
+            ageb = uli.geography.load('ageb').merge(
+                results.query("geo_level == 'ageb'"),
+                on='geo_id', how='left')
+            ageb.plot(column='value', ax=axes[1], legend=True,
+                      missing_kwds={'color': 'lightgrey'})
+            axes[1].set_title('the same values aggregated to AGEB')
+            axes[1].set_axis_off()
+            """
+        ),
+        markdown(
+            """
+            Questions worth asking of that map:
+
+            - Are the high values where you would expect parks to be?
+            - Is anywhere suspiciously blank — and is that a real
+              absence, or missing data?
+            - Does Condesa look plausible? Here it is largely empty,
+              which is consistent with a new development, but could
+              equally be incomplete OpenStreetMap coverage. That
+              ambiguity belongs in `method.condesa_treatment`, which is
+              why step 6 said it.
+            - Do the two panels tell the same story? If aggregating
+              changes the pattern, check the method.
+
+            ## 10. Validate
+
+            `uli.check()` runs the schema, consistency and
+            project-requirement checks together.
+            """
+        ),
+        code(
+            """
+            report = uli.check(results, meta)
+            print(report)
+            """
+        ),
+        markdown(
+            """
+            `[ERROR]` lines block delivery; `[WARN]` lines are worth
+            reading but will not stop you. The replication warning here
+            is expected and correct.
+
+            ## 11. Deliver, and hand it back
+
+            `write_indicator` writes three files and refuses to write
+            at all if validation failed. While you are still working,
+            `allow_failure=True` saves a draft anyway.
+            """
+        ),
+        code(
+            """
+            # This demonstration writes to a temporary folder so it
+            # does not leave a stray deliverable in outputs/.  Your own
+            # work omits output_dir, and the files land under
+            #   outputs/<work_package>/<indicator_code>/
+            import tempfile
+            demo_output = tempfile.mkdtemp()
+
+            written = uli.write_indicator(results, meta,
+                                          output_dir=demo_output)
+
+            print()
+            print('would normally be written to:')
+            print('  outputs/' + meta['indicator']['work_package']
+                  + '/' + meta['indicator']['code'] + '/')
+            print()
+            for key in ('results', 'metadata', 'validation'):
+                path = written[key]
+                print(f'{key:11s} {os.path.basename(path):55s} '
+                      f'{os.path.getsize(path) / 1024:>8,.0f} KB')
+            """
+        ),
+        code(
+            """
+            # What the metadata document looks like on disk:
+            with open(written['metadata'], encoding='utf-8') as f:
+                print(''.join(f.readlines()[:28]))
+            """
+        ),
+        markdown(
+            """
+            (This indicator belongs to WP01, so the demo reports that
+            path. Yours will name your own work package.)
+
+            ### Handing it back
+
+            Results are gzipped, so one delivery is about 0.3 MB
+            rather than 5 MB, and the whole indicator set is around
+            26 MB — small enough to live in the repository:
+
+            ```bash
+            git checkout -b wp04-open-space          # your package
+            git add outputs/WP04_greenness_and_land_cover/
+            git add notebooks/04_greenness_and_land_cover.ipynb
+            git commit -m "WP04: public open space coverage"
+            git push -u origin wp04-open-space
             ```
-              geo_id              value
-              CONDESA_F001        3.5
-              CONDESA_F002        0.0
-              ...
-            ```
 
-            That is all. Everything after that — the other
-            geographies, the validation, the file layout — is done for
-            you by three function calls (section 9).
+            Then open a pull request. That gives the work a review
+            point and a record of what changed, which email does not.
+
+            **Commit:** the three files in `outputs/`, and your
+            notebook with its cells run.
+
+            **Do not commit:** anything in `data/raw/`. Source data is
+            often large and frequently cannot be redistributed; the
+            metadata records where it came from so someone else can
+            fetch it.
+
+            If you cannot use git, send the `outputs/<indicator>/`
+            folder and your notebook to the project lead, who will
+            commit them.
+
+            ---
+
+            That is the whole process. Part 2 replaces step 5 —
+            everything before and after it is the same every time.
+            """
+        ),
+    ]
+
+
+def _part_two():
+    """Recipes for the other data shapes."""
+    cells = [
+        markdown(
+            """
+            ---
+            ---
+            # Part 2 — Recipes
+
+            Eight ways of getting from source data to `native`, the
+            two-column table that step 5 produced. Find the one that
+            matches your data.
+
+            | Your data looks like | Recipe |
+            |---|---|
+            | Points (shops, clinics, bus stops) | 1 how many · 2 how far |
+            | Polygons (parks, flood zones, land use) | 3 how much cover · 4 which class |
+            | Lines (streets, cycle lanes) | 5 |
+            | A raster (NDVI, temperature, pollution) | 6 |
+            | A table of values per AGEB or manzana | 7 |
+            | One number for the whole city | 8 |
+
+            **Each helper returns a table of `geo_id` and `value`** —
+            one measure, one column of numbers. An indicator with
+            several measures (a distance *and* a count, say) means
+            several calls: compute each, `uli.label()` each with its
+            own `measure_id`, and combine them at the end with
+            `uli.assemble()`. Recipe 1 shows that.
             """
         ),
     ]
@@ -1019,29 +1631,53 @@ def cookbook_notebook():
         'Points → how many, or how dense',
         'you have point locations and want a count, a count per km², '
         'or a count per 1,000 people.',
-        'access to shops, clinics, bus stops, parks; destination '
-        'counts; incident counts.',
+        'access to shops, clinics, bus stops; destination counts; '
+        'incident counts.',
         """
         destinations = gpd.read_file(GPKG, layer='destinations')
         shops = destinations[destinations['category'] == 'convenience']
-        print(f'{len(shops)} convenience stores')
 
-        # Three ways to count them.  Pick the one your measure needs.
-        raw = uli.count_features(shops, 'ageb')
-        density = uli.count_features(shops, 'ageb', per='sqkm')
-        per_capita = uli.count_features(shops, 'ageb', per='1000_persons')
-
-        pd.DataFrame({
-            'geo_id': raw['geo_id'],
-            'count': raw['value'],
-            'per_sqkm': density['value'].round(2),
-            'per_1000_people': per_capita['value'].round(2),
-        }).sort_values('count', ascending=False).head()
+        count = uli.count_features(shops, 'ageb')
+        print(count.head(3))
         """,
-        'a count per 1,000 people is `NaN` where nobody lives — that '
-        'is deliberate, not a bug. Dividing by zero population would '
-        'give infinity, and the schema forbids it.',
+        None,
     )
+
+    cells += [
+        markdown(
+            """
+            The `per` argument changes what is measured, so each is a
+            **separate measure** with its own `measure_id`, unit and
+            direction — not extra columns on one table.
+            """
+        ),
+        code(
+            """
+            density = uli.count_features(shops, 'ageb', per='sqkm')
+            per_capita = uli.count_features(shops, 'ageb',
+                                            per='1000_persons')
+
+            # Three separate two-column tables:
+            for name, table in [('count', count), ('per_sqkm', density),
+                                ('per_1000_persons', per_capita)]:
+                print(f'{name:18s} {list(table.columns)}  '
+                      f'median={table["value"].median():.2f}')
+
+            # Deliver several measures for one indicator like this:
+            #   a = uli.label(uli.harmonise(count, 'ageb'), meta,
+            #                 'my_code__quantity')
+            #   b = uli.label(uli.harmonise(density, 'ageb'), meta,
+            #                 'my_code__density_per_sqkm')
+            #   results = uli.assemble([a, b])
+            """
+        ),
+        markdown(
+            '**Watch out:** a count per 1,000 people is empty where '
+            'nobody lives. That is deliberate — dividing by zero '
+            'population would give infinity, which the schema does not '
+            'allow.'
+        ),
+    ]
 
     cells += _recipe(
         2,
@@ -1052,14 +1688,14 @@ def cookbook_notebook():
         markets = destinations[
             destinations['category'] == 'fresh_food_market']
 
-        near = uli.distance_to_nearest(markets, 'grid_100m', cap=3000)
-        near['value'].describe().round(0)
+        native = uli.distance_to_nearest(markets, 'grid_100m', cap=3000)
+        print(native['value'].describe().round(0))
         """,
-        'this is **straight-line** distance, not walking distance '
-        'along streets. Real walking distance is longer, and the '
-        'difference is not constant. Say which you used in the '
-        'measure description. (WP01 uses network distance from the '
-        'GHSCI pipeline.)',
+        'this is **straight-line** distance, not distance along '
+        'streets. Walking distance is longer, and the difference '
+        'varies with the street layout. Say which you used in the '
+        'measure description. WP01 uses network distance from the '
+        'GHSCI pipeline.',
     )
 
     cells += _recipe(
@@ -1068,21 +1704,15 @@ def cookbook_notebook():
         'you want a percentage of area: tree canopy, flood extent, '
         'park cover, built-up land.',
         'vegetation percent, flooding, residential area, public open '
-        'space coverage.',
+        'space.',
         """
         open_space = gpd.read_file(GPKG, layer='open_space')
 
-        cover = uli.areal_share(open_space, 'ageb', as_percentage=True)
-        print(cover['value'].describe().round(1))
-
-        # A map is the fastest way to see whether it is plausible.
-        ax = uli.geography.load('ageb').merge(cover, on='geo_id').plot(
-            column='value', legend=True, figsize=(9, 5),
-            legend_kwds={'label': '% of AGEB area as public open space'})
-        ax.set_axis_off()
+        native = uli.areal_share(open_space, 'ageb', as_percentage=True)
+        print(native['value'].describe().round(1))
         """,
-        'overlapping polygons are dissolved first, so a park counted '
-        'twice in your source will not be counted twice here.',
+        'overlapping polygons are dissolved first, so a park mapped '
+        'twice in your source is not counted twice.',
     )
 
     cells += _recipe(
@@ -1093,16 +1723,18 @@ def cookbook_notebook():
         """
         land = gpd.read_file(GPKG, layer='land_classes')
         print(land['land_class'].tolist())
+        print()
 
-        classes = uli.dominant_class(land, 'condesa_fraccionamiento',
-                                     'land_class')
-        print(classes['value'].value_counts(dropna=False))
+        native = uli.dominant_class(land, 'condesa_fraccionamiento',
+                                    'land_class')
+        print(native['value'].value_counts(dropna=False))
         """,
-        'the result is a **label**, not a number, so it cannot go '
-        'into the index as-is. Usually you want a share instead — '
-        '"percent residential" — which is Recipe 3 applied to one '
-        'filtered class. Note too that 7 of the 40 fraccionamientos '
-        'come back empty: the census layer does not cover them.',
+        'the result is a **label**, not a number, so it cannot enter '
+        'the index directly — deliver it as an `ordinal` measure with '
+        'a documented encoding, or use Recipe 3 on one filtered class '
+        'to get "percent residential", which is usually more useful. '
+        'Note that 7 of the 40 fraccionamientos come back empty here: '
+        'the census layer does not cover them.',
     )
 
     cells += _recipe(
@@ -1111,20 +1743,21 @@ def cookbook_notebook():
         'your data is an attribute of street segments and you want '
         'the share of street length that has it.',
         'sidewalk availability, street lighting, cycling '
-        'infrastructure, level of traffic stress.',
+        'infrastructure, traffic stress.',
         """
         streets = gpd.read_file(GPKG, layer='streets_condesa')
         print(streets['highway'].value_counts().head())
+        print()
 
-        # NOTE: has_sidewalk_FABRICATED is invented demo data.
-        share = uli.network_share(
+        # has_sidewalk_FABRICATED is invented demo data, not a finding.
+        native = uli.network_share(
             streets, 'condesa_fraccionamiento',
             attribute='has_sidewalk_FABRICATED')
-        share['value'].describe().round(2)
+        print(native['value'].describe().round(2))
         """,
-        'segments are cut at unit boundaries, so a long road passing '
-        'through three units is shared between them by length. Units '
-        'with no streets at all return `NaN`, not zero.',
+        'segments are cut at unit boundaries, so a road crossing three '
+        'units is shared between them by length. Units with no streets '
+        'return an empty value rather than zero.',
     )
 
     cells += _recipe(
@@ -1132,40 +1765,34 @@ def cookbook_notebook():
         'A raster → summarise it within each unit',
         'you have a continuous surface from satellite imagery or a '
         'model.',
-        'NDVI, land surface temperature, air pollutant '
-        'concentrations, urban heat.',
+        'NDVI, land surface temperature, pollutant concentrations, '
+        'urban heat.',
         """
         RASTER = os.path.join(DEMO, 'demo_population_100m.tif')
 
-        mean_value = uli.zonal_statistic(RASTER, 'ageb', 'mean')
-        max_value = uli.zonal_statistic(RASTER, 'ageb', 'max')
-
-        pd.DataFrame({
-            'geo_id': mean_value['geo_id'],
-            'mean': mean_value['value'].round(1),
-            'max': max_value['value'].round(1),
-        }).head()
+        native = uli.zonal_statistic(RASTER, 'ageb', 'mean')
+        print(native['value'].describe().round(1))
         """,
-        'this reads the raster once per unit, so it is slow on the '
-        '22,355 cells of `grid_100m`. Test on `ageb` first. Also '
-        'check the raster nodata value is being honoured — a nodata '
-        'of -9999 averaged into your mean is a silent disaster.',
+        'this reads the raster once per unit, so it is slow over the '
+        '22,355 cells of `grid_100m` — test on `ageb` first. Check '
+        'the nodata value is being honoured, too: a nodata of -9999 '
+        'averaged into a mean is easy to miss and hard to spot later.',
     )
 
     cells += _recipe(
         7,
         'A table you already have per unit',
         'your values already exist for AGEBs or manzanas — from the '
-        'census, or a spreadsheet a colleague sent.',
-        'census variables, housing costs, employment, anything '
-        'administrative.',
+        'census, or a spreadsheet from a colleague.',
+        'census variables, housing costs, employment, administrative '
+        'data.',
         """
         census = pd.read_csv(
             os.path.join(DEMO, 'demo_ageb_census.csv'),
             dtype={'CVEGEO': str})
 
-        # The only trick: your key must match geo_id exactly.
-        # For AGEB and manzana, geo_id IS the INEGI CVEGEO.
+        # Your key must match geo_id exactly.  For ageb and manzana,
+        # geo_id is the INEGI CVEGEO.
         native = census.rename(
             columns={'CVEGEO': 'geo_id', 'pct_65_plus': 'value'}
         )[['geo_id', 'value']]
@@ -1173,18 +1800,17 @@ def cookbook_notebook():
         known = set(uli.geography.units('ageb')['geo_id'])
         print(f'{native["geo_id"].isin(known).sum()} of {len(native)} '
               'rows matched a reference AGEB')
-        native.head()
         """,
-        'if very few rows match, it is almost always a string/number '
-        'problem — CVEGEO must be read as text or Excel eats the '
-        'leading zero. That is why `dtype={"CVEGEO": str}` is there.',
+        'if few rows match, it is usually the key being read as a '
+        'number — CVEGEO has leading zeros, so read it as text with '
+        '`dtype={"CVEGEO": str}`.',
     )
 
     cells += _recipe(
         8,
         'One number for the whole city',
         'your source only supports a single city-wide figure — a '
-        'household survey, one air quality station.',
+        'household survey, one monitoring station.',
         'housing affordability from ENIGH/ENVI, city-level survey '
         'measures.',
         """
@@ -1193,183 +1819,64 @@ def cookbook_notebook():
             'value': [42.0],
         })
 
-        results = uli.harmonise(native, native_scale='city')
-        results.groupby(['geo_level', 'aggregation_method']).size()
+        example = uli.harmonise(native, native_scale='city')
+        print(example.groupby(['geo_level', 'aggregation_method']).size())
         """,
         'every finer unit gets the same value, flagged `replicated`. '
-        'That is honest and it is fine — but the composite index will '
-        'exclude it at fine scales, because a constant tells you '
-        'nothing about where in the city is better. Do not try to '
-        'make it look more detailed than it is.',
+        'That is the honest representation, and the composite index '
+        'excludes such measures at fine scales because a constant '
+        'cannot distinguish one part of the city from another.',
     )
+    return cells
 
-    cells += [
+
+def _part_three():
+    """Reference material."""
+    return [
         markdown(
             """
             ---
-            # 9. The part that is always the same
+            ---
+            # Part 3 — Reference
 
-            Whichever recipe you used, you now have `native` — a table
-            of `geo_id` and `value`. Three calls finish the job.
+            ## The steps that never change
 
-            ### 9.1 `harmonise` — fill in the other geographies
-
-            You computed at one scale. The project needs five. This
-            does it, using the shared crosswalk, and records honestly
-            how each value got there.
+            Whichever recipe produced `native`:
 
             ```python
-            results = uli.harmonise(native, native_scale='ageb',
-                                    method='population_weighted_mean')
-            ```
-
-            Which `method`?
-
-            | Your measure is… | Use |
-            |---|---|
-            | something people experience (access, exposure, comfort) | `population_weighted_mean` |
-            | a property of land (cover, temperature, land use) | `area_weighted_mean` |
-            | a property of streets | `length_weighted_mean` |
-            | a count of things | `sum` |
-
-            ### 9.2 `label` — say which measure this is
-
-            ```python
-            results = uli.label(results, meta, 'my_code__quantity')
-            ```
-
-            ### 9.3 `check` and `write_indicator` — validate and deliver
-
-            ```python
+            results = uli.harmonise(native, native_scale='grid_100m',
+                                    method='area_weighted_mean')
+            results = uli.label(results, meta, 'my_code__lens')
             print(uli.check(results, meta))
             uli.write_indicator(results, meta)
             ```
 
-            `write_indicator` **refuses to write** if validation
-            fails. While you are still working, add
-            `allow_failure=True` to save a draft anyway.
-            """
-        ),
-        markdown(
-            """
-            ---
-            # 10. One indicator, all the way through
+            ## When something goes wrong
 
-            Public open space coverage, from raw polygons to a
-            validated deliverable. This is the whole job.
-            """
-        ),
-        code(
-            """
-            # STEP 1 — documentation, pre-filled from the workbook.
-            meta = uli.metadata_stub(187, analyst=ANALYST_DETAILS)
-
-            print('indicator:', meta['indicator']['name_en'])
-            print('adapted from:', meta['indicator']['adapted_from'][:90])
-            print()
-            print('still to fill in:')
-            for path in uli.todos(meta)[:8]:
-                print('  ', path)
-            """
-        ),
-        code(
-            """
-            # STEP 2 — the calculation (Recipe 3).
-            open_space = gpd.read_file(GPKG, layer='open_space')
-            native = uli.areal_share(open_space, 'grid_100m',
-                                     as_percentage=True)
-            native['value'].describe().round(2)
-            """
-        ),
-        code(
-            """
-            # STEP 3 — every reporting geography, from that one result.
-            results = uli.harmonise(
-                native,
-                native_scale='grid_100m',
-                method='area_weighted_mean',   # land cover, not people
-            )
-            results.groupby(['geo_level', 'aggregation_method']).agg(
-                units=('value', 'size'), with_value=('value', 'count'))
-            """
-        ),
-        code(
-            """
-            # STEP 4 — describe the measure, then label the rows.
-            measure = meta['measures'][0]
-            measure.update(
-                id='access_to_public_open_space__density_percent_cover',
-                name_en='Public open space, percent of area',
-                description=(
-                    'Share of each unit covered by public open space '
-                    'polygons, as a percentage of unit area.'),
-                unit='percent',
-                value_type='percentage',
-                direction='higher_is_better',
-                denominator_type='area_sqkm',
-                native_scale='grid_100m',
-                aggregation_method='area_weighted_mean',
-            )
-            meta['measures'] = [measure]
-
-            results = uli.label(results, meta, measure['id'])
-            results.head(3)
-            """
-        ),
-        code(
-            """
-            # STEP 5 — validate.  It will fail, and it should: the
-            # health evidence is still a TODO, and that is the part
-            # only you can do.
-            print(uli.check(results, meta))
-            """
-        ),
-        markdown(
-            """
-            Read that report from the bottom. The `[ERROR]` lines are
-            what stops delivery; `[WARN]` lines are worth reading but
-            will not block you.
-
-            The outstanding errors here are the documentation the
-            project asks of you — an independent health citation, a
-            named pathway, documented data sources. Fill those in (see
-            the [analyst guide](../docs/analyst_guide.md) §2) and the
-            same call passes.
-            """
-        ),
-        code(
-            """
-            # STEP 6 — deliver.  Uncomment once validation passes.
-            # uli.write_indicator(results, meta)
-            #
-            # Writes three files under
-            #   outputs/<work_package>/<indicator_code>/
-            # and prints the validation report alongside them.
-            """
-        ),
-        markdown(
-            """
-            ---
-            # 11. When something goes wrong
-
-            | Message | What it means | Fix |
+            | Message | What it means | What to do |
             |---|---|---|
-            | `FileNotFoundError: Reference geographies not found` | `geography/` is missing or you are running from the wrong folder | run the notebook from `notebooks/`; check `uli.geography.available()` |
+            | `FileNotFoundError: Reference geographies not found` | `geography/` missing, or the notebook is running from another folder | run from `notebooks/`; check `uli.geography.available()` |
             | `'x' is not a reporting geography` | a typo in a level name | one of `city`, `ageb`, `grid_1000m`, `condesa_fraccionamiento`, `grid_100m`, `manzana`, `condesa_lote` |
-            | `... is finer than ...; use method='replicated'` | you asked to aggregate *down* | you cannot invent detail; let `harmonise` handle it |
+            | `... is finer than ...; use method='replicated'` | you asked to aggregate *down* | let `harmonise` decide; it replicates and flags |
             | `measure id ... must start with ...` | `measure_id` does not match `indicator_code` | use `<indicator_code>__<lens>` |
-            | `N metadata fields still contain a TODO` | the stub is not filled in | `uli.todos(meta)` lists exactly which |
-            | `only N of 40 Condesa fraccionamientos have a value` | your native scale does not reach Condesa | compute on `grid_100m` if you can |
-            | Values all `NaN` after a merge | join keys do not match | check `dtype={'CVEGEO': str}` and compare a few ids by eye |
-            | Everything is zero | usually a CRS mismatch | all project data is EPSG:6366; the helpers reproject for you, so check your **input** |
+            | `N metadata fields still contain a TODO` | the stub is not filled in | `uli.todos(meta)` lists which |
+            | `only N of 40 Condesa fraccionamientos have a value` | your native scale does not reach Condesa | compute on `grid_100m` if the data support it |
+            | Values all empty after a merge | join keys do not match | check `dtype={'CVEGEO': str}`, compare a few ids directly |
+            | Everything zero or absurd | often a CRS mismatch | project data is EPSG:6366; the helpers reproject inputs, so check the input file's own CRS |
 
-            Still stuck? Bring it to the group with the error message
-            and the cell that produced it. A question asked early is
-            cheaper than a week of quiet struggle.
+            If none of that fits, bring the error message and the cell
+            that produced it to the group.
+
+            ## Where else to look
+
+            | | |
+            |---|---|
+            | Function names and arguments | [`docs/cheatsheet.md`](../docs/cheatsheet.md) |
+            | The reasoning behind the requirements | [`docs/analyst_guide.md`](../docs/analyst_guide.md) |
+            | Exact output specification | [`schema/ULI_output_schema.md`](../schema/ULI_output_schema.md) |
             """
         ),
     ]
-    return notebook(cells, 'ULI cookbook')
 
 def synthesis_notebook(package):
     """Reporting-side notebook: exposure and the provisional index."""

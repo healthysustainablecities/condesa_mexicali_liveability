@@ -4,26 +4,27 @@ You have been assigned a small set of indicators from the Mexicali Urban
 Liveability Index (ULI). This guide takes you from "here is a row in a
 spreadsheet" to "here is a validated, documented, ingestible deliverable".
 
-> ## Do this first
+> ## Start with the notebooks
 >
-> **You do not need to read this document before starting.** Do this instead,
-> in about half an hour:
+> This document explains the reasoning; the notebooks show the work. If you
+> are starting now:
 >
 > 1. Open [`notebooks/00_start_here.ipynb`](../notebooks/00_start_here.ipynb)
 >    and run the setup check.
-> 2. Work through
->    [`notebooks/00b_cookbook.ipynb`](../notebooks/00b_cookbook.ipynb) —
->    eight worked examples on data already in the repository. Run every cell.
->    This is the fastest way to understand what you are producing.
+> 2. Work through Part 1 of
+>    [`notebooks/00b_cookbook.ipynb`](../notebooks/00b_cookbook.ipynb), which
+>    takes one indicator from the workbook to a finished deliverable —
+>    evidence, data licensing, calculation, map check and hand-back. Run every
+>    cell. Part 2 covers the other data shapes.
 > 3. Open your work package notebook and read the brief for your first
 >    indicator.
-> 4. Keep [`cheatsheet.md`](cheatsheet.md) open beside you.
+> 4. Keep [`cheatsheet.md`](cheatsheet.md) to hand.
 >
-> Then come back here. **§2 and §5 are the two sections that matter most**;
-> the rest is reference for when a question comes up.
+> Then come back here. **§2 and §5 carry most of what is specific to this
+> project**; the rest is reference.
 >
-> If you are new to Python: you will be copying and adapting recipes, not
-> writing code from scratch. The cookbook is designed for that.
+> The recipes are written to be copied and adapted rather than written from
+> scratch.
 
 ---
 
@@ -42,32 +43,32 @@ spreadsheet" to "here is a validated, documented, ingestible deliverable".
 
 ---
 
-## 1. What you are actually producing
+## 1. What you are producing
 
-Not a map. Not a report. **A number for every unit of every reporting
-geography, plus the documentation that makes that number defensible.**
+**A number for every unit of every reporting geography, plus the
+documentation that makes that number interpretable and reproducible.**
 
 For each indicator you deliver two files:
 
 ```
 outputs/<work_package>/<indicator_code>/
-    <indicator_code>_results.csv       # the numbers
+    <indicator_code>_results.csv.gz    # the numbers (gzipped)
     <indicator_code>_metadata.yml      # why, from what, how
+    <indicator_code>_validation.json   # what the checks found
 ```
 
-The metadata is not paperwork. The composite index cannot use a value without
-knowing its direction (is high good or bad?), and Reimagina Urbana cannot
-publish a layer without knowing its licence. An undocumented number is
-unusable, so it is worth exactly nothing.
+The metadata is used rather than filed. The composite index needs `direction`
+to know whether a high value is good or bad; Reimagina Urbana needs the licence
+to know whether a layer can be published; and anyone revisiting the work needs
+the sources and method to reproduce it.
 
 ---
 
 ## 2. Start with the health evidence, not the data
 
-This is the most common mistake and the most expensive one. If you find the
-data first, you will build the indicator the data happens to support, and only
-then look for a justification. That produces indicators that measure something
-real but irrelevant.
+Finding the data first tends to produce the indicator the data happens to
+support, with a justification written afterwards to fit. Working the other way
+round keeps the indicator anchored to something that matters.
 
 Work in this order:
 
@@ -94,8 +95,8 @@ Real examples:
 > which reduces heat stress and makes midday walking tolerable, which reduces
 > heat-related morbidity and supports physical activity.
 
-If you cannot write that sentence, you do not yet understand the indicator, and
-no amount of GIS will fix it. Bring it to the group.
+If the sentence is hard to write, that is usually a sign the indicator needs
+discussion with the group rather than more analysis.
 
 The mechanism must be one of `uli.vocab.HEALTH_PATHWAYS` — physical activity
 (transport and recreation), social interaction, heat, air pollution, noise,
@@ -135,9 +136,10 @@ indicator appears in other indices.
 - Where to look: PubMed, Scopus/Web of Science, Google Scholar, WHO
   publications, the Lancet series on urban design and health, *Environment
   International*, *Health & Place*, *Journal of Transport & Health*.
-- Record the **effect size with its uncertainty**, not just "was associated
-  with". `RR 0.92 (95% CI 0.88–0.96) per 10% increase in NDVI` is evidence;
-  "greenness is beneficial" is an opinion.
+- Record the **effect size with its uncertainty** where the source gives one.
+  `RR 0.92 (95% CI 0.88–0.96) per 10% increase in NDVI` says considerably more
+  than "greenness is beneficial". Narrative reviews and guidance documents
+  often report no pooled estimate; say so rather than implying one.
 
 **Watch for setting mismatch.** Most of this literature is from temperate,
 high-income cities. Mexicali is arid, extremely hot in summer, low-to-middle
@@ -145,7 +147,8 @@ income, and heavily car-oriented. Say so in `rationale.arid_context` when the
 transfer is questionable — for example, distance-based walkability thresholds
 calibrated in European cities may overstate walking in a city where the summer
 maximum routinely exceeds 45 °C and shade, not distance, is the binding
-constraint. That observation is a scientific contribution, not an excuse.
+constraint. Recording that is useful in itself: the transferability of these
+thresholds to arid cities is a genuine open question.
 
 ### 2.3 Let the evidence set the threshold
 
@@ -323,7 +326,7 @@ Before you call it done:
 - [ ] `uli.todos(meta)` returns an empty list
 - [ ] You have looked at a map of your result and it is not obviously wrong
 
-That last one matters. Plot it:
+Plot it:
 
 ```python
 import uli
@@ -334,8 +337,9 @@ units.plot(column='value', legend=True, figsize=(10, 8))
 
 Ask: are the extreme values where you would expect? Is the city centre
 different from the periphery in the direction you would predict? Does Condesa
-look plausible, or suspiciously empty? Most errors are visible in ten seconds
-on a map and invisible in a table.
+look plausible, or suspiciously empty? A map catches errors that a summary
+table hides — a shifted CRS, an unhandled nodata value, a join that silently
+matched nothing.
 
 ---
 
@@ -363,7 +367,7 @@ on a map and invisible in a table.
 - Schema questions → `schema/ULI_output_schema.md`
 - What am I assigned → `indicator_register.csv`, or `uli.register.load()`
 - Something in the workbook is ambiguous → raise it with the group **before**
-  computing; ambiguity resolved differently by two analysts is worse than
-  ambiguity resolved slowly
+  computing. Two analysts resolving the same ambiguity differently is harder to
+  fix later than resolving it slowly now
 - Two indicators look like the same thing → they may well be; see
   `DISTRIBUTED_CALCULATION_PLAN.md` §2 and flag it

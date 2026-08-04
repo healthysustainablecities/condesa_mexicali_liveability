@@ -311,8 +311,8 @@ def _write_readme(catalogue):
         'sidewalk inventory in OpenStreetMap, and the length-weighted',
         'recipe needs a boolean street attribute to demonstrate. Values',
         'were drawn at random, weighted by road class. The column name',
-        'shouts about it on purpose. Never report a number derived from',
-        'it.',
+        'is deliberately conspicuous. Do not report a number derived',
+        'from it.',
         '',
     ]
     with open(

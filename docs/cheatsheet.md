@@ -1,6 +1,6 @@
 # Cheat sheet
 
-One page. Print it, keep it open, ignore the rest until you need it.
+The API on one page.
 
 ## The whole job
 
@@ -16,7 +16,9 @@ print(uli.check(results, meta))                   # validate
 uli.write_indicator(results, meta)                # deliver
 ```
 
-Everything you produce is a two-column table: **`geo_id`** and **`value`**.
+Each calculation helper returns a two-column table — **`geo_id`** and
+**`value`** — for one measure. An indicator with several measures means
+several calls, labelled separately and combined with `uli.assemble()`.
 
 ## Recipes → [`notebooks/00b_cookbook.ipynb`](../notebooks/00b_cookbook.ipynb)
 
@@ -78,7 +80,7 @@ Minimum before it will validate:
   `aggregation_method`
 - `method.summary` and `method.condesa_treatment`
 
-## Rules that are not negotiable
+## Rules the validator enforces
 
 - **Natural units.** No normalising, no rescaling, no z-scores. Set
   `direction` instead.
@@ -101,6 +103,8 @@ uli.geography.load('condesa_fraccionamiento').boundary.plot(
 Are the extremes where you would expect? Does Condesa look plausible, or
 suspiciously empty?
 
+Cookbook Part 1 step 9 shows this check in context.
+
 ## Vocabulary
 
 ```python
@@ -113,5 +117,6 @@ uli.vocab.DISTANCE_THRESHOLDS_M  # 300, 500, 800, 1000, 1600
 
 ## Stuck?
 
-Cookbook §11 lists the common error messages and what they mean. If that does
-not cover it, bring the error and the cell to the group — early is cheap.
+Cookbook Part 3 lists the common error messages and what they mean. If that
+does not cover it, bring the error message and the cell that produced it to
+the group.

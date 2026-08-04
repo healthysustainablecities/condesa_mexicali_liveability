@@ -8,8 +8,9 @@ from them a composite liveability index. Outputs also supply layers to the
 
 The indicator set was assembled from a review of the liveability literature,
 classified by domain, subdomain, category and subject, and narrowed to
-**81 indicators** that are plausibly relevant to health and wellbeing in
-Mexicali and feasible with available data. Indicators are *adapted* from the
+81, of which **80 are in scope** (one has since been excluded) — indicators
+plausibly relevant to health and wellbeing in Mexicali and feasible with
+available data. Indicators are *adapted* from the
 reviewed articles rather than copied, which is why each requires independent
 health evidence: the source article establishes that an indicator has been
 used, not that it matters.

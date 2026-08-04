@@ -3,12 +3,19 @@
 Every indicator lands in its own directory under ``outputs/``::
 
     outputs/WP04_greenness_and_land_cover/vegetation_percent/
-        vegetation_percent_results.csv
+        vegetation_percent_results.csv.gz
         vegetation_percent_metadata.yml
         vegetation_percent_validation.json
 
 so that a work package can be zipped, reviewed or ingested on its own,
 and so that two analysts can never overwrite each other.
+
+Results are gzipped.  A full delivery is around 37,000 rows -- five
+megabytes as plain CSV, and roughly 400 MB across the whole indicator
+set, which is more than a git repository should carry.  Compressed it
+is about 0.3 MB per indicator and 26 MB in total, so deliverables can
+simply be committed.  ``pandas`` reads and writes the compression
+transparently from the file extension.
 """
 
 import datetime
@@ -45,12 +52,31 @@ def _sha256(path):
     return digest.hexdigest()
 
 
+RESULTS_SUFFIXES = ('_results.csv.gz', '_results.csv')
+
+
+def results_path(target, code, compress=True):
+    """Path to an indicator's results file."""
+    suffix = '_results.csv.gz' if compress else '_results.csv'
+    return os.path.join(target, f'{code}{suffix}')
+
+
+def find_results(target, code):
+    """Locate an indicator's results file, compressed or not."""
+    for suffix in RESULTS_SUFFIXES:
+        path = os.path.join(target, f'{code}{suffix}')
+        if os.path.exists(path):
+            return path
+    return None
+
+
 def write_indicator(
     results,
     metadata,
     output_dir=None,
     validate_first=True,
     allow_failure=False,
+    compress=True,
 ):
     """Write results, metadata and a validation report to disk.
 
@@ -79,16 +105,20 @@ def write_indicator(
             'or pass allow_failure=True to write a draft.'
         )
 
-    results_path = os.path.join(target, f'{code}_results.csv')
+    written = results_path(target, code, compress)
+    for stale in RESULTS_SUFFIXES:
+        other = os.path.join(target, f'{code}{stale}')
+        if other != written and os.path.exists(other):
+            os.remove(other)
     results = results.reindex(columns=list(vocab.RESULT_COLUMNS))
-    results.to_csv(results_path, index=False, encoding='utf-8')
+    results.to_csv(written, index=False, encoding='utf-8')
 
     metadata = dict(metadata)
     metadata['provenance'] = {
         **metadata.get('provenance', {}),
         'computed_on': datetime.date.today().isoformat(),
-        'results_file': os.path.basename(results_path),
-        'results_sha256': _sha256(results_path),
+        'results_file': os.path.basename(written),
+        'results_sha256': _sha256(written),
         'row_count': int(len(results)),
     }
     metadata_path = os.path.join(target, f'{code}_metadata.yml')
@@ -107,7 +137,7 @@ def write_indicator(
     print(report)
     print(f'\nWritten to {target}')
     return {
-        'results': results_path,
+        'results': written,
         'metadata': metadata_path,
         'validation': report_path,
         'report': report,
@@ -130,10 +160,10 @@ def read_indicator(code, work_package=None, output_dir=None):
         target = os.path.join(root, package, code)
         if not os.path.isdir(target):
             continue
-        results = pd.read_csv(
-            os.path.join(target, f'{code}_results.csv'),
-            dtype={'geo_id': str},
-        )
+        found = find_results(target, code)
+        if found is None:
+            continue
+        results = pd.read_csv(found, dtype={'geo_id': str})
         with open(
             os.path.join(target, f'{code}_metadata.yml'), encoding='utf-8'
         ) as f:
@@ -156,10 +186,7 @@ def collect(output_dir=None, geo_level=None):
         if not os.path.isdir(package_dir):
             continue
         for code in sorted(os.listdir(package_dir)):
-            results_path = os.path.join(
-                package_dir, code, f'{code}_results.csv'
-            )
-            if not os.path.exists(results_path):
+            if find_results(os.path.join(package_dir, code), code) is None:
                 continue
             results, metadata = read_indicator(code, package, root)
             if geo_level:

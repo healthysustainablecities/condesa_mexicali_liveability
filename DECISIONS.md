@@ -8,7 +8,7 @@ This is the working record. The plan itself — what to do, without the
 reasoning — is
 [`DISTRIBUTED_CALCULATION_PLAN.md`](DISTRIBUTED_CALCULATION_PLAN.md).
 
-**Status: decisions taken 4 August 2026.** §12 lists what remains open.
+**Status: decisions taken 4 August 2026.** §14 lists what remains open.
 
 ---
 
@@ -340,7 +340,7 @@ readers, so they are separate documents:
 
 ---
 
-## 13. Citation provenance: resolved by article number
+## 12. Citation provenance: resolved by article number
 
 The metadata stub originally built its `adapted_from` field by concatenating
 three workbook columns: the `Article #`, the free-text `Citation(s)` text, and
@@ -387,7 +387,33 @@ disagreement instead of hiding it.
 
 ---
 
-## 12. Still open
+## 13. How work is handed back
+
+The question "do analysts commit results or email them?" had not been
+answered, and the answer turns on file size.
+
+A full delivery is about 37,000 rows: five reporting geographies, and one row
+per unit of each. As plain CSV that is **5 MB per indicator, roughly 400 MB
+across the indicator set** -- more than a git repository should carry.
+Gzipped it is **0.3 MB per indicator, about 26 MB in total**, which is
+unremarkable.
+
+Decided:
+
+1. **Results are gzipped** (`<code>_results.csv.gz`). `uli.write_indicator`
+   does this by default; `pandas` reads and writes the compression from the
+   file extension, so no other code changes.
+2. **Deliverables are committed** on a branch, with a pull request -- which
+   gives the work a review point and a record of what changed. Analysts who
+   cannot use git send the output folder and notebook to the project lead.
+3. **Raw source data is not committed.** It is often large, and licences
+   frequently forbid redistribution. `data/raw/` is git-ignored except for
+   its `.gitkeep`; the metadata records citation, URL, date retrieved and
+   licence so the source can be fetched again.
+
+---
+
+## 14. Still open
 
 1. **Leads for WP03-WP08.** Everything else is ready; the work packages are
    not.
@@ -402,7 +428,10 @@ disagreement instead of hiding it.
    constant currently in the code (section 4).
 6. **Article list verification** — work through `citation_audit.csv` and
    confirm each article's author, year and title against the paper (section
-   13). Some entries have already been corrected; the rest are unverified.
+   12). Some entries have already been corrected; the rest are unverified.
+7. **Confirm the hand-back workflow** with the team (section 13) — in
+   particular whether the repository is public, which would rule out
+   committing anything licence-restricted.
 
 ---
 

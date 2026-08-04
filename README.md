@@ -4,8 +4,9 @@ Shared schema, tooling and scaffolded notebooks for distributed calculation of
 spatial liveability indicators for Mexicali, Baja California — and, from them, a
 composite liveability index and layers for the **Reimagina Urbana** platform.
 
-**81 indicators** across 8 work packages, plus a synthesis step. Schema
-version **1.0.0**.
+**80 indicators in scope** across 8 work packages, plus a synthesis step.
+(The workbook narrowed the review to 81; one has since been excluded.)
+Schema version **1.0.0**.
 
 - [`DISTRIBUTED_CALCULATION_PLAN.md`](DISTRIBUTED_CALCULATION_PLAN.md) — the
   plan: how the work is divided and what each contributor delivers.

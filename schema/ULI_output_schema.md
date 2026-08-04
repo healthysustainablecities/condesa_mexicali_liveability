@@ -12,7 +12,7 @@ Two documents are delivered per indicator:
 
 | File | What it is |
 |---|---|
-| `<indicator_code>_results.csv` | A long (tidy) table of values — one row per measure × geography × unit |
+| `<indicator_code>_results.csv.gz` | A long (tidy) table of values — one row per measure × geography × unit, gzipped |
 | `<indicator_code>_metadata.yml` | Everything needed to interpret, cite, reproduce and licence those values |
 
 Both are validated by `uli.validate.check()` against
@@ -203,10 +203,16 @@ assumptions, limitations, and `condesa_treatment`.
 outputs/
   WP04_greenness_and_land_cover/
     vegetation_percent/
-      vegetation_percent_results.csv
+      vegetation_percent_results.csv.gz
       vegetation_percent_metadata.yml
       vegetation_percent_validation.json
 ```
+
+Results are gzipped. A full delivery is around 37,000 rows — 5 MB as plain
+CSV and roughly 400 MB across the indicator set, which is more than a git
+repository should carry; compressed it is about 0.3 MB each and 26 MB in
+total, so deliverables can simply be committed. `pandas` handles the
+compression from the file extension, so nothing else changes.
 
 Written by `uli.write_indicator(results, metadata)`, which validates first and
 refuses to publish a failing deliverable unless you pass `allow_failure=True`.
