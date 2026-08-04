@@ -16,9 +16,21 @@ version **1.0.0**.
 
 ## Start here
 
+**New here? Two notebooks, about half an hour:**
+
+1. [`notebooks/00_start_here.ipynb`](notebooks/00_start_here.ipynb) — what the
+   project is, and a setup check.
+2. [`notebooks/00b_cookbook.ipynb`](notebooks/00b_cookbook.ipynb) — **eight
+   worked examples** covering every shape an indicator takes, running on demo
+   data already in this repository. Run every cell.
+
+Then open your work package notebook (`01_` to `08_`) and keep
+[`docs/cheatsheet.md`](docs/cheatsheet.md) beside you.
+
 | If you are… | Read |
 |---|---|
-| An analyst starting a work package | [`docs/analyst_guide.md`](docs/analyst_guide.md), then [`notebooks/00_overview_and_schema.ipynb`](notebooks/00_overview_and_schema.ipynb) |
+| Starting a work package | the two notebooks above, then [`docs/analyst_guide.md`](docs/analyst_guide.md) §2 and §5 |
+| Looking for a function name | [`docs/cheatsheet.md`](docs/cheatsheet.md) |
 | Wondering what you were assigned | [`indicator_register.csv`](indicator_register.csv), or `uli.register.load()` |
 | Writing code that produces results | [`schema/ULI_output_schema.md`](schema/ULI_output_schema.md) |
 | Reviewing the approach | [`DISTRIBUTED_CALCULATION_PLAN.md`](DISTRIBUTED_CALCULATION_PLAN.md) |
@@ -34,11 +46,12 @@ indicator_register.csv           Generated: flat indicator list + assignments
 citation_audit.csv               Generated: Article # vs free-text citation
 
 schema/         The output specification and JSON Schemas
-docs/           Analyst guide
+docs/           Analyst guide and cheat sheet
 uli/            Shared python package (see below)
-build/          Notebook generator
+build/          Notebook and demo-data generators
 geography/      Reference geographies + aggregation crosswalk (generated)
-notebooks/      Scaffolded analyst notebooks (generated)
+notebooks/      Start page, cookbook, and one per work package (generated)
+data/demo/      Small real layers so the cookbook runs after a clone
 data/raw/       Raw source data, never edited in place
 outputs/        Deliverables, one directory per indicator
 ```
@@ -118,6 +131,13 @@ needed; takes a few minutes):
 
 ```bash
 python -m uli.geography build
+```
+
+To rebuild the cookbook's demo data (needs the GHSCI outputs and GHS-POP
+tiles, which are not in this repository):
+
+```bash
+python build/build_demo_data.py
 ```
 
 ## Requirements

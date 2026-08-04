@@ -386,6 +386,70 @@ def count_features(features, geo_level, per=None, predicate='intersects'):
     return result[['geo_id', 'value']]
 
 
+def distance_to_nearest(features, geo_level, cap=None):
+    """Straight-line distance (m) from each unit to the nearest feature.
+
+    The ``proximity`` lens.  Distance is measured from the unit's
+    representative point, **in a straight line** -- not along the
+    street network.  Network distance is what people actually walk, so
+    where it is available (the GHSCI pipeline produces it for WP01)
+    prefer it, and say which you used in the measure description.
+
+    ``cap`` truncates distances beyond a given value, which is often
+    sensible: the difference between 4 km and 9 km from a library is
+    not a difference anyone experiences.
+    """
+    import geopandas as gpd
+
+    units = geography.load(geo_level)
+    features = features.to_crs(units.crs)
+    points = units.copy()
+    points['geometry'] = points.representative_point()
+    joined = gpd.sjoin_nearest(
+        points[['geo_id', 'geometry']],
+        features[['geometry']],
+        how='left',
+        distance_col='value',
+    ).drop_duplicates(subset='geo_id')
+    result = joined[['geo_id', 'value']].copy()
+    if cap is not None:
+        result['value'] = result['value'].clip(upper=cap)
+    return result.reset_index(drop=True)
+
+
+def dominant_class(polygons, geo_level, column):
+    """The class covering most of each unit's area.
+
+    For categorical surfaces -- land use type, climate zone, hazard
+    category.  Returns the class label, not a number, so deliver it as
+    an ``ordinal`` measure with a documented encoding, or use it to
+    derive a share (e.g. "percent residential") which is usually more
+    useful in a composite.
+    """
+    import geopandas as gpd
+
+    units = geography.load(geo_level)
+    polygons = polygons.to_crs(units.crs)
+    pieces = gpd.overlay(
+        units[['geo_id', 'geometry']],
+        polygons[[column, 'geometry']],
+        how='intersection',
+        keep_geom_type=False,
+    )
+    pieces['a'] = pieces.geometry.area
+    winner = (
+        pieces.groupby(['geo_id', column])['a']
+        .sum()
+        .reset_index()
+        .sort_values('a', ascending=False)
+        .drop_duplicates('geo_id')
+        .set_index('geo_id')
+    )
+    result = units[['geo_id']].copy()
+    result['value'] = result['geo_id'].map(winner[column])
+    return result
+
+
 def areal_share(polygons, geo_level, as_percentage=False):
     """Share of each unit's area covered by ``polygons`` (0-1)."""
     import geopandas as gpd

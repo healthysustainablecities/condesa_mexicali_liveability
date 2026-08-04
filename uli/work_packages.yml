@@ -75,6 +75,7 @@ work_packages:
       comfort outputs.
 
   - code: WP02_thermal_comfort_and_heat
+    measure_families: true
     name: Thermal comfort and urban heat
     name_es: Confort térmico y calor urbano
     lead: Rossano Schifanella
@@ -91,6 +92,7 @@ work_packages:
       which is authoritative before duplicating effort.
 
   - code: WP03_air_quality
+    measure_families: true
     name: Air quality
     name_es: Calidad del aire
     lead: TBC
@@ -129,6 +131,7 @@ work_packages:
       conflated.
 
   - code: WP05_hazards_and_incidents
+    measure_families: true
     name: Environmental hazards and safety incidents
     name_es: Riesgos ambientales e incidentes de seguridad
     lead: TBC

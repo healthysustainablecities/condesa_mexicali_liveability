@@ -1,11 +1,44 @@
-# Getting started: a guide for analysts
+# A guide for analysts
 
 You have been assigned a small set of indicators from the Mexicali Urban
 Liveability Index (ULI). This guide takes you from "here is a row in a
 spreadsheet" to "here is a validated, documented, ingestible deliverable".
 
-Read §1–§3 before you write any code. They are the part people skip and then
-have to redo.
+> ## Do this first
+>
+> **You do not need to read this document before starting.** Do this instead,
+> in about half an hour:
+>
+> 1. Open [`notebooks/00_start_here.ipynb`](../notebooks/00_start_here.ipynb)
+>    and run the setup check.
+> 2. Work through
+>    [`notebooks/00b_cookbook.ipynb`](../notebooks/00b_cookbook.ipynb) —
+>    eight worked examples on data already in the repository. Run every cell.
+>    This is the fastest way to understand what you are producing.
+> 3. Open your work package notebook and read the brief for your first
+>    indicator.
+> 4. Keep [`cheatsheet.md`](cheatsheet.md) open beside you.
+>
+> Then come back here. **§2 and §5 are the two sections that matter most**;
+> the rest is reference for when a question comes up.
+>
+> If you are new to Python: you will be copying and adapting recipes, not
+> writing code from scratch. The cookbook is designed for that.
+
+---
+
+## Contents
+
+| § | | Read it |
+|---|---|---|
+| 1 | What you are producing | once |
+| **2** | **Start with the health evidence** | **carefully** |
+| 3 | Finding and documenting data | when you get there |
+| 4 | Computing at the right scale | when you get there |
+| **5** | **Covering Condesa** | **carefully** |
+| 6 | Validating and delivering | when you get there |
+| 7 | Common pitfalls | skim now, revisit later |
+| 8 | Where to ask | when stuck |
 
 ---
 
@@ -216,13 +249,16 @@ those rows as `replicated`. That is honest and it is fine — the composite inde
 will know not to treat it as spatial variation. What is *not* fine is silently
 presenting a city constant as a 100 m grid.
 
-Four helpers cover most calculations:
+Six helpers cover almost every calculation. Each has a worked example in
+the [cookbook](../notebooks/00b_cookbook.ipynb):
 
 ```python
-uli.count_features(points_gdf, 'manzana', per='1000_persons')
-uli.areal_share(polygons_gdf, 'grid_100m')          # % cover
-uli.network_share(edges_gdf, 'ageb', 'has_sidewalk')  # length-weighted
-uli.zonal_statistic('ndvi.tif', 'grid_100m', 'mean')
+uli.count_features(points, 'manzana', per='1000_persons')   # recipe 1
+uli.distance_to_nearest(points, 'grid_100m', cap=3000)      # recipe 2
+uli.areal_share(polygons, 'grid_100m', as_percentage=True)  # recipe 3
+uli.dominant_class(polygons, 'ageb', 'land_class')          # recipe 4
+uli.network_share(edges, 'ageb', 'has_sidewalk')            # recipe 5
+uli.zonal_statistic('ndvi.tif', 'grid_100m', 'mean')        # recipe 6
 ```
 
 ---
@@ -321,6 +357,9 @@ on a map and invisible in a table.
 
 ## 8. Where to ask
 
+- How do I compute this? → [the cookbook](../notebooks/00b_cookbook.ipynb)
+- What was that function called? → [`cheatsheet.md`](cheatsheet.md)
+- An error I do not understand → cookbook §11 lists the common ones
 - Schema questions → `schema/ULI_output_schema.md`
 - What am I assigned → `indicator_register.csv`, or `uli.register.load()`
 - Something in the workbook is ambiguous → raise it with the group **before**
