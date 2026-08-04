@@ -1,0 +1,190 @@
+# Work package definitions for distributed calculation of the Mexicali
+# Urban Liveability Index (ULI) indicators.
+#
+# Indicators are assigned to exactly one work package, in the order
+# listed below (first match wins).  Selection may be by:
+#   ids                : explicit list of workbook '#' values
+#   pragmatic_contains : case-insensitive substring of the workbook
+#                        column "What is the most pragmatic way of
+#                        measuring it?"
+#   category_in        : exact match on "Indicator / Category"
+#
+# Anything unmatched is reported as 'WP99_unassigned' by
+# uli.register.load(), which is deliberately noisy -- an unassigned
+# indicator is nobody's job.
+#
+# Edit this file (not the code) when responsibilities change, then
+# re-run `python build/build_notebooks.py`.
+
+schema_version: '1.0.0'
+
+# Indicators dropped from scope after the workbook was narrowed.  They
+# stay in the register, flagged and with the reason recorded, so that
+# the decision is visible rather than looking like an oversight -- and
+# so it can be revisited.  They are not assigned to a work package and
+# get no notebook scaffold.
+excluded:
+  - id: 238
+    indicator: Road density
+    decided: 2026-08-04
+    reason: >
+      Not clearly described in the source article, and not clearly
+      distinguishable from street connectivity (#362), which the core
+      GHSCI workflow already produces.
+
+work_packages:
+
+  - code: WP00_composite_index
+    name: Composite liveability index
+    name_es: Índice compuesto de habitabilidad
+    lead: Carl Higgs
+    kind: synthesis
+    ids: [0]
+    summary: >
+      Not an analyst task.  The Mexicali Liveability Index is assembled
+      centrally from validated work package outputs, applying
+      normalisation and weighting once, after delivery.
+
+  - code: WP01_ghsci_access_network
+    name: Destination access and network measures (GHSCI)
+    name_es: Acceso a destinos y medidas de red (GHSCI)
+    lead: Carl Higgs
+    kind: software_pipeline
+    # 362 street connectivity and 340 population density are inputs to
+    # the GHSCI walkability index and are produced by the same
+    # pipeline, so they belong here rather than with urban form.
+    ids: [362, 340]
+    pragmatic_contains: GHSCI
+    summary: >
+      Pedestrian-network destination analysis run through the Global
+      Healthy and Sustainable City Indicators software: distance to
+      closest, access within threshold distance(s), and where
+      applicable counts per km² and per 1,000 persons.  Also includes
+      the composites produced by the core GHSCI workflow -- the
+      walkability index and its components (street connectivity,
+      population density, access to daily living amenities) and the
+      level of cycling traffic stress network.
+    method_notes: >
+      Produced by the GHSCI pipeline for the Mexicali study region and
+      exported to the ULI schema, so that every other work package has
+      a worked reference implementation to follow.  These are the only
+      composites constructed within a work package; every other
+      indicator is delivered as measured, and any further compositing
+      happens centrally at the index step.  The walkability index will
+      be tailored to the arid context, mediated by the WP02 thermal
+      comfort outputs.
+
+  - code: WP02_thermal_comfort_and_heat
+    name: Thermal comfort and urban heat
+    name_es: Confort térmico y calor urbano
+    lead: Rossano Schifanella
+    kind: remote_sensing_climate
+    pragmatic_contains: Rossano
+    category_in: ['Thermal comfort', 'Heat']
+    summary: >
+      Outdoor thermal comfort and urban heat exposure for an arid
+      city: temperature, humidity, sunshine/shade, departures from
+      human comfort optima, and the urban heat island.
+    method_notes: >
+      Cross-check against the GHSCI Global Urban Heat Vulnerability
+      Index (GUHVI) layers already produced for Mexicali, and agree
+      which is authoritative before duplicating effort.
+
+  - code: WP03_air_quality
+    name: Air quality
+    name_es: Calidad del aire
+    lead: TBC
+    kind: monitoring_and_modelling
+    category_in: ['Air Quality']
+    summary: >
+      Ambient air quality from the Mexicali monitoring network and
+      satellite/reanalysis products: pollutant concentrations,
+      exceedance days against WHO guidance, and an overall air quality
+      assessment.
+    method_notes: >
+      These rows are one construct seen through different lenses and
+      time bases -- an index value, that value evaluated against a
+      standard, and the frequency of compliance across a year -- so
+      deliver them as a single measure family sharing a method and
+      data sources, distinguished by the `temporal_basis` and
+      `threshold` fields.  The monitoring network has few stations, so
+      declare the native scale and interpolation method honestly; do
+      not present station values as if they were 100 m resolution.
+
+  - code: WP04_greenness_and_land_cover
+    name: Greenness and land cover
+    name_es: Vegetación y cobertura del suelo
+    lead: TBC
+    kind: remote_sensing
+    ids: [385, 135, 378, 388, 389]
+    summary: >
+      Vegetation quantity, canopy cover, vegetation mix and greenness
+      from satellite imagery and municipal tree data.
+    method_notes: >
+      In an arid city, distinguish irrigated urban vegetation from
+      desert background; a raw NDVI threshold calibrated elsewhere
+      will not transfer.  Coordinate with WP06, which holds land use
+      type (#405) -- land *cover* from imagery and land *use* from the
+      municipal classification are different things and should not be
+      conflated.
+
+  - code: WP05_hazards_and_incidents
+    name: Environmental hazards and safety incidents
+    name_es: Riesgos ambientales e incidentes de seguridad
+    lead: TBC
+    kind: registry_and_hazard_mapping
+    ids: [71, 72, 326, 325, 341, 296, 235, 334]
+    summary: >
+      Flooding exposure (including main roads), fire incidence,
+      hazardous waste, crime, and road traffic crashes and fatalities.
+    method_notes: >
+      Incident registries are counts of reported events; normalise by
+      population or exposure and be explicit about reporting bias and
+      the risk of penalising well-surveilled areas.
+
+  - code: WP06_urban_form_and_land_use
+    name: Urban form and land use
+    name_es: Forma urbana y uso de suelo
+    lead: TBC
+    kind: cadastral_and_morphometric
+    # 405 'Land use type' now carries the permutations formerly split
+    # across 119 and 120, and sits with land use mix because both come
+    # from the same municipal land use classification.
+    ids: [116, 405, 230, 19, 22, 338, 335]
+    summary: >
+      Land use mix and land use type, residential area, building
+      design and height, dwelling density and urbanisation rate.
+    method_notes: >
+      Land use type (#405) is the parent covering the permutations
+      formerly listed separately; deliver it once, with the land use
+      classes as measure parameters.
+
+  - code: WP07_street_infrastructure
+    name: Street and active travel infrastructure
+    name_es: Infraestructura vial y de movilidad activa
+    lead: TBC
+    kind: field_and_streetscape_audit
+    ids: [167, 75, 365, 61]
+    summary: >
+      Pedestrian infrastructure, sidewalk availability, street
+      lighting and cycling infrastructure, as segment-level attributes
+      of the street network.
+    method_notes: >
+      Compute on the street network first (per segment), then
+      aggregate to areas with length weighting.  Use the same network
+      edges as the GHSCI pipeline so results are directly comparable.
+
+  - code: WP08_housing_economy_and_services
+    name: Housing, economy and public services
+    name_es: Vivienda, economía y servicios públicos
+    lead: TBC
+    kind: survey_and_administrative
+    ids: [289, 290, 112, 1]
+    summary: >
+      Housing affordability, land and house prices, jobs, and the
+      quality/adequacy of public services, from census, ENIGH/ENVI,
+      DENUE, cadastral and municipal sources.
+    method_notes: >
+      Survey-based measures are often only representative at city or
+      AGEB scale.  Report at the true scale and flag replication
+      downward rather than implying fine-grained variation.

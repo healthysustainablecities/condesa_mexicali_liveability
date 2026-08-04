@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reimaginaurbana.mx/schema/uli/indicator_results-1.0.0.json",
+  "title": "Mexicali ULI indicator results row",
+  "description": "One row of a *_results.csv file: the value of one measure for one unit of one reporting geography. The CSV is a long (tidy) table; this schema describes a single row of it.",
+  "type": "object",
+  "required": [
+    "indicator_id",
+    "indicator_code",
+    "measure_id",
+    "geo_level",
+    "geo_id",
+    "value",
+    "native_scale",
+    "aggregation_method",
+    "coverage",
+    "quality_flag"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "indicator_id": {
+      "type": "integer",
+      "description": "The '#' of the parent indicator in the ULI workbook"
+    },
+    "indicator_code": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Stable snake_case slug for the parent indicator"
+    },
+    "measure_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+__[a-z0-9_]+$",
+      "description": "Unique slug of the form <indicator_code>__<lens>[_<parameter>], matching a measure declared in the indicator metadata"
+    },
+    "geo_level": {
+      "enum": [
+        "city",
+        "ageb",
+        "grid_1000m",
+        "condesa_fraccionamiento",
+        "manzana",
+        "grid_100m",
+        "condesa_lote"
+      ]
+    },
+    "geo_id": {
+      "type": "string",
+      "description": "Unit identifier exactly as supplied in the reference geopackage (CVEGEO for ageb and manzana)"
+    },
+    "value": {
+      "type": ["number", "null"],
+      "description": "The measured value. Null only where quality_flag is suppressed, not_applicable or no_data."
+    },
+    "denominator": {
+      "type": ["number", "null"],
+      "description": "Population, area (m2) or other denominator underlying the value; the type is declared per measure in the metadata"
+    },
+    "native_scale": {
+      "enum": [
+        "city",
+        "ageb",
+        "grid_1000m",
+        "condesa_fraccionamiento",
+        "manzana",
+        "grid_100m",
+        "condesa_lote"
+      ],
+      "description": "The geography at which the measure was actually computed, before any aggregation or replication"
+    },
+    "aggregation_method": {
+      "enum": [
+        "native",
+        "population_weighted_mean",
+        "area_weighted_mean",
+        "length_weighted_mean",
+        "dwelling_weighted_mean",
+        "sum",
+        "areal_share",
+        "majority",
+        "replicated",
+        "zonal_statistic",
+        "nearest_feature",
+        "interpolated"
+      ]
+    },
+    "coverage": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Share of the unit (by population or area, as declared per measure) with valid input data"
+    },
+    "quality_flag": {
+      "enum": [
+        "ok",
+        "low_coverage",
+        "imputed",
+        "suppressed",
+        "not_applicable",
+        "no_data"
+      ]
+    },
+    "note": {
+      "type": ["string", "null"]
+    }
+  }
+}
