@@ -36,14 +36,19 @@ resultados no coincidirían con los de las demás personas.
 Entregue resultados en cada escala que sus datos realmente permitan, para **ambas**
 áreas de estudio: la mancha urbana de Mexicali y el desarrollo Condesa.
 
-| Escala | Capa en el geopaquete de referencia | Identificador del área |
-|---|---|---|
-| Cuadrícula de población de 100 m | `grid_100m` | `area_id` (celda) |
-| Manzana | `manzanas` | `area_id` = `CVEGEO` del INEGI |
-| AGEB | `agebs` | `area_id` = `CVEGEO` del INEGI |
-| Región | `region` | `area_id` = `mexicali` o `condesa` |
-| Fraccionamientos de Condesa | `condesa_fraccionamientos` | `area_id` |
-| Lotes de Condesa | `condesa_lotes` | `area_id` |
+| Escala | Capa en el geopaquete de referencia | Áreas | Identificador del área |
+|---|---|---|---|
+| Cuadrícula de población de 100 m | `grid_100m` | 22,151 | `area_id` (celda) |
+| Manzana | `manzanas` | 14,236 | `area_id` = `CVEGEO` del INEGI |
+| AGEB | `agebs` | 436 | `area_id` = `CVEGEO` del INEGI |
+| Región | `region` | 2 | `area_id` = `mexicali` o `condesa` |
+| Fraccionamientos de Condesa | `condesa_fraccionamientos` | 40 | `area_id` |
+| Lotes de Condesa | `condesa_lotes` | 14,989 | `area_id` |
+
+Se incluyen todas las áreas, incluso aquellas para las que no puede calcularse
+ningún valor, de modo que la cobertura parcial sea visible y no quede oculta.
+Cada capa incluye además `area_sqm` y `pop_2025` (GHS-POP 2025, repartida por
+superficie a partir de la cuadrícula).
 
 La cuadrícula de 100 m corresponde a la cuadrícula de población GHS-POP 2025,
 transformada de Mollweide a EPSG:6366 y vectorizada. Las celdas miden exactamente
@@ -88,7 +93,7 @@ mantienen en inglés):
 | `variable` | El nombre de la columna tal como aparece en sus resultados |
 | `description` | Lenguaje sencillo, **en español o en inglés**: qué significa el número |
 | `units` | p. ej. `metros`, `porcentaje`, `conteo`, `personas por km2`, `adimensional` |
-| `statistic` | `promedio`, `porcentaje`, `conteo`, `suma`, `mediana`, `índice` o `categoría` |
+| `statistic` | uno de `value`, `mean`, `median`, `percentage`, `count`, `sum`, `rate`, `index`, `category` (valor, promedio, mediana, porcentaje, conteo, suma, tasa, índice, categoría) |
 | `scale` | En qué escala o escalas se proporciona la variable |
 | `source` | El conjunto de datos del que proviene el valor |
 
@@ -102,6 +107,12 @@ Ejemplo:
 
 Las columnas `units` y `statistic` son importantes: sin ellas, una columna de
 números no puede interpretarse, combinarse ni cartografiarse correctamente.
+
+Utilice `value` para una medición directa (no agregada) y `rate` para un conteo o
+cantidad por unidad de superficie o de población.
+
+Los indicadores generados con el programa GHSCI ya incluyen estas columnas en el
+diccionario de datos que produce, de modo que pueden utilizarse tal cual.
 
 ## 7. Documentación de las fuentes
 

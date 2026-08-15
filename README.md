@@ -21,14 +21,17 @@ What to calculate is covered in a separate brief, not here.
 `mexicali_reference_areas.gpkg`, EPSG:6366 (Mexico ITRF2008 / UTM zone 11N).
 Every layer carries `area_id`, `area_sqm` and `pop_2025`.
 
-| Layer | What it is |
-|---|---|
-| `region` | Two rows: the Mexicali urban area, and the Condesa development |
-| `grid_100m` | GHS-POP 2025 population grid, vectorised into EPSG:6366 |
-| `agebs` | INEGI 2020 AGEBs, keyed by `CVEGEO` |
-| `manzanas` | INEGI 2020 census blocks, keyed by `CVEGEO` |
-| `condesa_fraccionamientos` | Condesa subdivisions |
-| `condesa_lotes` | Individual Condesa lots |
+| Layer | Areas | What it is |
+|---|---|---|
+| `region` | 2 | The Mexicali urban area, and the Condesa development |
+| `grid_100m` | 22,151 | GHS-POP 2025 population grid, vectorised into EPSG:6366 |
+| `agebs` | 436 | INEGI 2020 AGEBs, keyed by `CVEGEO` |
+| `manzanas` | 14,236 | INEGI 2020 census blocks, keyed by `CVEGEO` |
+| `condesa_fraccionamientos` | 40 | Condesa subdivisions |
+| `condesa_lotes` | 14,989 | Individual Condesa lots |
+
+Geometry and identifiers come from the source datasets, so every area is
+listed even where no indicator value can be calculated for it.
 
 The extent is the **union** of the Mexicali urban area and the Condesa
 development: about 18% of Condesa falls outside the mapped urban area, so the

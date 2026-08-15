@@ -31,14 +31,18 @@ align with anyone else's.
 Deliver results at each scale your data genuinely support, for **both** study
 areas: the Mexicali urban area and the Condesa development.
 
-| Scale | Layer in the reference geopackage | Area identifier |
-|---|---|---|
-| 100 m population grid | `grid_100m` | `area_id` (grid cell) |
-| Manzana (census block) | `manzanas` | `area_id` = INEGI `CVEGEO` |
-| AGEB | `agebs` | `area_id` = INEGI `CVEGEO` |
-| Region | `region` | `area_id` = `mexicali` or `condesa` |
-| Condesa subdivisions | `condesa_fraccionamientos` | `area_id` |
-| Condesa lots | `condesa_lotes` | `area_id` |
+| Scale | Layer in the reference geopackage | Areas | Area identifier |
+|---|---|---|---|
+| 100 m population grid | `grid_100m` | 22,151 | `area_id` (grid cell) |
+| Manzana (census block) | `manzanas` | 14,236 | `area_id` = INEGI `CVEGEO` |
+| AGEB | `agebs` | 436 | `area_id` = INEGI `CVEGEO` |
+| Region | `region` | 2 | `area_id` = `mexicali` or `condesa` |
+| Condesa subdivisions | `condesa_fraccionamientos` | 40 | `area_id` |
+| Condesa lots | `condesa_lotes` | 14,989 | `area_id` |
+
+Every area is listed, including those for which no value can be calculated, so
+that partial coverage is visible rather than silent. Each layer also carries
+`area_sqm` and `pop_2025` (GHS-POP 2025, apportioned by area from the grid).
 
 The 100 m grid is the GHS-POP 2025 population grid, transformed from Mollweide
 to EPSG:6366 and vectorised. Cells are exactly 100 m × 100 m, and the transform
@@ -80,7 +84,7 @@ One row per variable, with these columns:
 | `variable` | The column name exactly as it appears in your results |
 | `description` | Plain language, **Spanish or English** — what the number means |
 | `units` | e.g. `metres`, `percent`, `count`, `persons per km2`, `dimensionless` |
-| `statistic` | `mean`, `percentage`, `count`, `sum`, `median`, `index` or `category` |
+| `statistic` | one of `value`, `mean`, `median`, `percentage`, `count`, `sum`, `rate`, `index`, `category` |
 | `scale` | Which scale(s) the variable is provided at |
 | `source` | The dataset the value derives from |
 
@@ -94,6 +98,12 @@ Example:
 
 The `units` and `statistic` columns matter: without them a column of numbers
 cannot be interpreted, combined or mapped correctly.
+
+Use `value` for a direct measurement rather than an aggregate, and `rate` for a
+count or amount per unit of area or population.
+
+Indicators produced with the GHSCI software carry these columns automatically in
+the data dictionary it generates, so those can be used as supplied.
 
 ## 7. Documenting your sources
 
