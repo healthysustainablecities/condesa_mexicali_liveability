@@ -33,8 +33,8 @@ areas: the Mexicali urban area and the Condesa development.
 
 | Scale | Layer in the reference geopackage | Areas | Area identifier |
 |---|---|---|---|
-| 100 m population grid | `grid_100m` | 22,151 | `area_id` (grid cell) |
-| Manzana (census block) | `manzanas` | 14,236 | `area_id` = INEGI `CVEGEO` |
+| 100 m population grid | `grid_100m` | 33,451 | `area_id` (grid cell) |
+| Manzana (census block) | `manzanas` | 13,656 | `area_id` = INEGI `CVEGEO` |
 | AGEB | `agebs` | 436 | `area_id` = INEGI `CVEGEO` |
 | Region | `region` | 2 | `area_id` = `mexicali` or `condesa` |
 | Condesa subdivisions | `condesa_fraccionamientos` | 40 | `area_id` |
@@ -43,6 +43,13 @@ areas: the Mexicali urban area and the Condesa development.
 Every area is listed, including those for which no value can be calculated, so
 that partial coverage is visible rather than silent. Each layer also carries
 `area_sqm` and `pop_2025` (GHS-POP 2025, apportioned by area from the grid).
+
+**The scales do not all cover the same ground.** Only the grid and the region
+layers tile the whole study area. Manzanas are blocks and exclude the streets
+between them, covering 46% of its surface and 77% of its population; AGEBs
+cover 63% of the surface but 99% of the population. So **do not derive a
+city-wide figure by summing or averaging manzanas** — it would omit about a
+quarter of the population. Use the `region` layer for city-wide values.
 
 The 100 m grid is the GHS-POP 2025 population grid, transformed from Mollweide
 to EPSG:6366 and vectorised. Cells are exactly 100 m × 100 m, and the transform

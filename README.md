@@ -24,14 +24,19 @@ Every layer carries `area_id`, `area_sqm` and `pop_2025`.
 | Layer | Areas | What it is |
 |---|---|---|
 | `region` | 2 | The Mexicali urban area, and the Condesa development |
-| `grid_100m` | 22,151 | GHS-POP 2025 population grid, vectorised into EPSG:6366 |
+| `grid_100m` | 33,451 | GHS-POP 2025 population grid, vectorised into EPSG:6366 |
 | `agebs` | 436 | INEGI 2020 AGEBs, keyed by `CVEGEO` |
-| `manzanas` | 14,236 | INEGI 2020 census blocks, keyed by `CVEGEO` |
+| `manzanas` | 13,656 | INEGI census blocks (`MXL_MZAPob`), keyed by `CVEGEO` |
 | `condesa_fraccionamientos` | 40 | Condesa subdivisions |
 | `condesa_lotes` | 14,989 | Individual Condesa lots |
 
 Geometry and identifiers come from the source datasets, so every area is
 listed even where no indicator value can be calculated for it.
+
+Only the grid and region layers tile the whole 328.9 km² study area. Manzanas
+cover 46% of its surface and 77% of its 832,271 residents; AGEBs cover 63% and
+99%. City-wide figures should come from the `region` layer, not from summing
+the smaller units.
 
 The extent is the **union** of the Mexicali urban area and the Condesa
 development: about 18% of Condesa falls outside the mapped urban area, so the

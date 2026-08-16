@@ -18,9 +18,10 @@ Population is apportioned by area from the 100 m GHS-POP 2025 grid
 produced by the run, so it is consistent across every scale and
 available for areas GHSCI dropped.
 
-Run after the analysis has completed::
+Reads the population grid from PostGIS, so it must be run inside the
+GHSCI container after the analysis has completed::
 
-    python build/build_reference_areas.py
+    docker exec -w "/home/ghsci/process/data/MX/Mexicali Liveability"         ghsci-ee python build/build_reference_areas.py
 """
 
 import os
@@ -122,7 +123,31 @@ def main():
         os.remove(TARGET)
 
     print('Reading the 100 m population grid ...')
-    grid = gpd.read_file(RUN_GPKG, layer='indicators_100m_2025').to_crs(CRS)
+    # The *population* grid clipped to the study region -- not the
+    # indicator summary grid.  calc_grid_pct_sp_indicators keeps only
+    # cells that are at least 10% within the region AND contain at
+    # least one sample point, which drops ~11,300 cells covering
+    # ~113 km2 that have no pedestrian network.  Those cells are still
+    # part of the study area, and indicators from remote sensing or
+    # hazard mapping will have values for them, so the reference grid
+    # must include them.
+    # ghsci lives in process/, which is not on the path when this is
+    # run from the project directory.
+    process_dir = os.path.dirname(DATA)
+    for candidate in (process_dir, os.path.join(process_dir, 'subprocesses')):
+        if candidate not in sys.path:
+            sys.path.insert(0, candidate)
+    import ghsci
+
+    r = ghsci.Region('data/MX/MX_Mexicali_2025_ULI')
+    grid = r.get_gdf(
+        """
+        SELECT p.grid_id, p.pop_est, p.geom
+        FROM population_100m_2025 p
+        JOIN urban_study_region u ON ST_Intersects(p.geom, u.geom)
+        """,
+        geom_col='geom',
+    ).rename_geometry('geometry').to_crs(CRS)
     grid = grid[['grid_id', 'pop_est', 'geometry']].copy()
     grid['cell_area'] = grid.geometry.area
     print(

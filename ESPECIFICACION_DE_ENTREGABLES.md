@@ -38,8 +38,8 @@ Entregue resultados en cada escala que sus datos realmente permitan, para **amba
 
 | Escala | Capa en el geopaquete de referencia | Áreas | Identificador del área |
 |---|---|---|---|
-| Cuadrícula de población de 100 m | `grid_100m` | 22,151 | `area_id` (celda) |
-| Manzana | `manzanas` | 14,236 | `area_id` = `CVEGEO` del INEGI |
+| Cuadrícula de población de 100 m | `grid_100m` | 33,451 | `area_id` (celda) |
+| Manzana | `manzanas` | 13,656 | `area_id` = `CVEGEO` del INEGI |
 | AGEB | `agebs` | 436 | `area_id` = `CVEGEO` del INEGI |
 | Región | `region` | 2 | `area_id` = `mexicali` o `condesa` |
 | Fraccionamientos de Condesa | `condesa_fraccionamientos` | 40 | `area_id` |
@@ -49,6 +49,14 @@ Se incluyen todas las áreas, incluso aquellas para las que no puede calcularse
 ningún valor, de modo que la cobertura parcial sea visible y no quede oculta.
 Cada capa incluye además `area_sqm` y `pop_2025` (GHS-POP 2025, repartida por
 superficie a partir de la cuadrícula).
+
+**Las escalas no cubren la misma superficie.** Solo la cuadrícula y las capas de
+región abarcan la totalidad del área de estudio. Las manzanas son bloques y
+excluyen las calles que las separan: cubren el 46% de la superficie y el 77% de
+la población; las AGEB cubren el 63% de la superficie y el 99% de la población.
+Por ello, **no calcule una cifra para toda la ciudad sumando o promediando
+manzanas**, pues omitiría cerca de una cuarta parte de la población. Utilice la
+capa `region` para los valores de ciudad.
 
 La cuadrícula de 100 m corresponde a la cuadrícula de población GHS-POP 2025,
 transformada de Mollweide a EPSG:6366 y vectorizada. Las celdas miden exactamente
