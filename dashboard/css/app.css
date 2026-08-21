@@ -1,0 +1,503 @@
+/* One sidebar carrying everything that describes the indicator — its legend,
+   its results, its chart, its layers — then one or two map panes. The panes
+   carry only what describes themselves.
+
+   Every colour is a variable with a default here; the region's `style:` block
+   overrides whichever it declares, applied at runtime by js/theme.js. */
+
+:root {
+  --ink: #4a443c;
+  --muted: #7a7269;
+  --line: #ddd6cb;
+  --bg: #ffffff;
+  --panel: #f5f1ea;
+  --accent: #709e8b;
+  /* the workshop palette: yellow carries the tour, pink the comparison */
+  --tour: #ffd973;
+  --compare: #d989d2;
+  --radius: 10px;
+  /* wide enough for a horizontal legend to label eight or ten classes */
+  --controls-w: 400px;
+  /* the floating pane header's height, so drawers can open below it */
+  --head-h: 60px;
+  /* the y-axis gutter, shared by the chart and the legend beneath it: they
+     line up because they are indented by the same amount and divide the same
+     remaining width into the same number of equal cells */
+  --y-gutter: 34px;
+  --cell-gap: 3px;
+}
+
+* { box-sizing: border-box; }
+
+/* Global, and !important, because several component rules set `display`
+   themselves and would otherwise win over the browser default. A hidden
+   element that stays visible is how the DISTANCE selector came to contradict
+   the legend beside it. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.muted { color: var(--muted); }
+
+/* The maps get the whole window and everything else floats over them, each as
+   a rounded panel of the same material. No media query anywhere: the panel
+   scrolls itself and the buttons are only as wide as they need to be, so
+   nothing has to be re-laid-out when the window is narrow — which is what the
+   old `max-width: 1150px` rule was doing badly, giving the map a quarter of the
+   screen and stretching the controls across the rest. */
+#app { height: 100%; position: relative; }
+
+/* Everything that floats over the maps shares this: same border, same
+   background, same shadow, so the toolbar, the pane headers and the button bar
+   read as one family of surfaces sitting above one map. */
+#controls, .pane-head, #actions, .drawer {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+#controls {
+  position: absolute; top: 10px; left: 10px; z-index: 5;
+  width: var(--controls-w);
+  max-height: calc(100% - 20px);
+  overflow-y: auto; overflow-x: hidden;
+  padding: 11px 13px 16px;
+}
+
+/* Three steps, cycled by #panelToggle: everything, then the indicator controls
+   hidden with the results still shown (the state to present from), then the
+   header alone when the map should have the screen. */
+body.panel-1 #panelBody { display: none; }
+body.panel-2 #panelBody,
+body.panel-2 #panelFooter { display: none; }
+body.panel-2 #controls { width: auto; }
+body.panel-2 #appTitle { display: none; }
+
+/* Floats at the bottom, starting where the toolbar ends, and is only as wide
+   as its buttons: a full-width bar was claiming a row of the window to hold
+   five buttons. It scrolls rather than wrapping, so its height never changes. */
+#actions {
+  position: absolute; left: calc(var(--controls-w) + 20px); bottom: 10px;
+  z-index: 5; width: max-content; max-width: calc(100% - var(--controls-w) - 30px);
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px;
+  overflow-x: auto; white-space: nowrap;
+}
+
+#appHead { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+#appTitle { font-size: 14.5px; line-height: 1.25; margin-right: auto; }
+
+.section-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); margin: 14px 0 5px;
+}
+
+/* ---- buttons ---- */
+
+.btn {
+  font: inherit; padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  background: #fff; cursor: pointer; color: inherit;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.small { padding: 3px 7px; font-size: 12px; }
+.btn.tour { background: var(--tour); border-color: var(--tour); font-weight: 600; }
+.btn.compare { background: #fff; border-color: var(--compare); }
+/* shaded when comparing, so the button states the mode rather than a checkbox */
+.btn.compare.on { background: var(--compare); border-color: var(--compare);
+  font-weight: 600; }
+.btn.icon {
+  border-radius: 50%; width: 24px; height: 24px; padding: 0; flex: none;
+  font-weight: 700; display: grid; place-items: center; line-height: 1;
+}
+/* the "i" keeps its serif italic; the cog is a glyph and should not be italic */
+.btn.icon.serif { font-family: Georgia, serif; font-style: italic; }
+.toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.lang { font: inherit; padding: 4px; border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px); background: #fff; }
+
+/* ---- what the map is showing ---- */
+
+#showing {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 9px 11px; margin-bottom: 12px;
+}
+.showing-head { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+/* the theme dot echoes the printed workshop cards */
+.theme-dot { width: 13px; height: 13px; border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14) inset; }
+.showing-title { font-weight: 600; font-size: 13.5px; margin-right: auto; }
+.showing-body { font-size: 12px; line-height: 1.4; color: var(--muted); }
+
+/* ---- fields ---- */
+
+.field { display: block; margin-bottom: 9px; }
+.field > span, .pane-field > span {
+  display: block; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--muted); margin-bottom: 3px;
+}
+.field select {
+  width: 100%; font: inherit; padding: 5px;
+  border: 1px solid var(--line); border-radius: calc(var(--radius) - 4px);
+  background: #fff;
+}
+.field select option:disabled { color: #b6b0a7; }
+
+.compare-tools { display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; margin: 10px 0; }
+
+#layerToggles { display: grid; gap: 3px; }
+#layerToggles label {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 12px; cursor: pointer; line-height: 1.3;
+}
+
+.sources-block h3 { font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 0 0 4px; }
+.sources-block ul { margin: 0; padding-left: 15px; font-size: 12px; }
+
+/* ---- settings drawer ---- */
+
+/* opens below the floating pane header rather than over it */
+.drawer {
+  position: absolute; top: calc(var(--head-h) + 20px);
+  left: calc(var(--controls-w) + 20px);
+  z-index: 6; width: 290px;
+  max-height: calc(100% - var(--head-h) - 30px);
+  overflow-y: auto;
+  background: #fff; box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
+  padding: 12px 14px 16px;
+}
+.drawer .close { position: absolute; top: 8px; right: 10px;
+  font: inherit; font-size: 12px; background: none; border: 0;
+  color: var(--muted); cursor: pointer; }
+
+/* ---- the figure: distribution above, legend below ----
+
+   These are one picture in two elements. Both are indented by --y-gutter and
+   then divide the remaining width into the same number of equal cells with the
+   same gap, so a swatch stands directly under its bar without either measuring
+   the other -- the arrangement the cycling validation site used, where
+   .leg-row/.leg-item and .histo-bars/.histo-x share exactly this structure.
+   Joining them into one card is what makes that legible as a single axis. */
+
+#histo, #legend {
+  background: #fff; border: 1px solid var(--line); padding: 8px 10px;
+}
+#histo {
+  margin-top: 12px; border-bottom: 0;
+  border-radius: calc(var(--radius) - 4px) calc(var(--radius) - 4px) 0 0;
+}
+#histo:empty { display: none; }
+#legend {
+  margin-bottom: 12px;
+  border-radius: 0 0 calc(var(--radius) - 4px) calc(var(--radius) - 4px);
+}
+/* with no chart above it, the legend is a card in its own right */
+#histo:empty + #legend {
+  margin-top: 12px; border-radius: calc(var(--radius) - 4px);
+}
+.lts-legend {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px); padding: 8px 10px;
+  margin: 12px 0;
+}
+
+.leg-title { font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+.leg-units { font-weight: 400; color: var(--muted); }
+.leg-row {
+  position: relative; display: flex; gap: var(--cell-gap);
+  padding-left: var(--y-gutter);
+}
+.legend .leg-row { padding-left: var(--y-gutter); }
+.lts-legend .leg-row, .pop-legend .leg-row { padding-left: 0; }
+/* the section title heads the card it opens, so it needs no space above */
+#histo .section-title { margin-top: 0; }
+.leg-item {
+  flex: 1; min-width: 0; text-align: center; font-size: 11px;
+  border-radius: 3px; padding: 1px 0 2px;
+}
+.leg-item.clickable { cursor: pointer; }
+.leg-item.static { cursor: default; }
+.leg-item.clickable:hover .patch { filter: brightness(0.92); }
+.leg-item.selected { background: var(--ink); color: #fff; }
+.patch {
+  display: block; width: auto; height: 12px; border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.25); margin-bottom: 2px;
+}
+.leg-label, .leg-note { display: block; line-height: 1.15; }
+/* a cut indicator's labels mark boundaries, so they hang at the cell's left
+   edge rather than under its middle, and the final edge closes the row */
+.leg-row.cuts .leg-item { text-align: left; }
+.leg-row.cuts .leg-label { margin-left: -1px; }
+/* out of the flow: an extra flex child would narrow every cell and break the
+   alignment with the bars above, which is the whole point of the arrangement */
+.leg-end {
+  position: absolute; right: 0; bottom: 2px; font-size: 11px;
+  background: #fff; padding-left: 2px;
+}
+.leg-note { font-size: 10px; color: var(--muted); }
+.leg-item.selected .leg-note { color: #d7d2c9; }
+/* the class at which a configured target is met, marked without taking width */
+.leg-item.target-start { box-shadow: -2px 0 0 var(--ink); }
+.leg-foot {
+  margin-top: 6px; font-size: 10.5px; color: var(--muted);
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.leg-swatch {
+  display: inline-block; width: 11px; height: 9px; border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.25); margin-right: 3px;
+  vertical-align: -1px;
+}
+.leg-direction { margin-top: 5px; font-size: 11px; color: var(--muted); }
+
+/* the population grid's key stays on its map, because its overlay is per-pane */
+.pop-legend {
+  position: absolute; z-index: 3; right: 8px; bottom: 48px;
+  background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px); padding: 7px 9px; max-width: 175px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ---- results table ---- */
+
+.results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.results-table caption {
+  caption-side: top; text-align: left; font-size: 11px;
+  color: var(--muted); padding-bottom: 4px;
+}
+.results-table th, .results-table td {
+  padding: 4px 5px; border-bottom: 1px solid var(--line);
+}
+.results-table thead th { font-size: 11px; color: var(--muted);
+  font-weight: 400; text-align: right; }
+.results-table tbody th { text-align: left; font-weight: 600; }
+.results-table td { text-align: right; font-variant-numeric: tabular-nums; }
+.results-scale { display: block; font-weight: 400; font-size: 10.5px;
+  color: var(--muted); }
+.results-diff th, .results-diff td { border-bottom: 0; padding-top: 6px; }
+.results-diff th { font-weight: 400; color: var(--muted); }
+.results-diff td { font-weight: 700; }
+.results-diff td.up { color: #2f7d4f; }
+.results-diff td.down { color: #b1442c; }
+.results-note { font-size: 10.5px; color: var(--muted); margin-top: 5px;
+  line-height: 1.35; }
+/* the distance the map is drawn from, so the table and the map cannot be read
+   as talking about different things */
+.results-table th.selected, .results-table td.selected {
+  box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent);
+}
+.results-table thead th.selected { color: var(--ink); font-weight: 600; }
+
+.histo { display: flex; }
+/* three labels -- ceiling, midpoint, zero -- spread over the plot's height */
+.histo-y {
+  flex: 0 0 var(--y-gutter); display: flex; flex-direction: column;
+  justify-content: space-between; align-items: flex-end;
+  padding-right: 5px; font-size: 9.5px; color: var(--muted);
+  line-height: 1;
+}
+.histo-y span { transform: translateY(-3px); }
+.histo-y span:last-child { transform: translateY(3px); }
+.histo-plot {
+  flex: 1; min-width: 0; position: relative;
+  border-bottom: 1px solid var(--line);
+  /* faint rules at the ceiling and the midpoint, so a bar can be read off */
+  background-image:
+    linear-gradient(var(--line), var(--line)),
+    linear-gradient(var(--line), var(--line));
+  background-size: 100% 1px, 100% 1px;
+  background-position: 0 0, 0 50%;
+  background-repeat: no-repeat;
+}
+.histo-bars {
+  display: flex; align-items: flex-end; gap: var(--cell-gap); height: 100%;
+}
+/* one group per class; within a group, one bar per region compared */
+.histo-group { flex: 1; min-width: 0; display: flex; align-items: flex-end;
+  gap: 1px; height: 100%; transition: opacity 0.12s; }
+.histo-group.dim { opacity: 0.22; }
+.histo-group.target-start { box-shadow: -2px 0 0 var(--ink); }
+.histo-bar { flex: 1; min-width: 2px; border-radius: 1px 1px 0 0;
+  align-self: flex-end; }
+.histo-key { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px;
+  font-size: 11px; color: var(--muted); }
+.histo-key-item { display: inline-flex; align-items: center; gap: 4px; }
+.histo-key-item i { width: 9px; height: 9px; border-radius: 2px;
+  background: var(--ink); display: inline-block; }
+.histo-target { margin-top: 6px; font-size: 11px; line-height: 1.35;
+  color: var(--ink); font-weight: 600; }
+
+/* ---- panes ---- */
+
+#panes {
+  position: absolute; inset: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--line); min-width: 0; min-height: 0;
+}
+body.single #panes { grid-template-columns: 1fr; }
+
+.pane { position: relative; background: var(--bg); min-width: 0; }
+/* The map is the pane; its header floats over it, as the toolbar does. The
+   header used to be a grid row, which put pane A's Region/Scale directly under
+   the toolbar and half behind it. */
+.map { position: absolute; inset: 0; }
+.pane-head {
+  position: absolute; top: 10px; left: 10px; z-index: 4;
+  width: max-content; max-width: calc(100% - 20px);
+  display: flex; align-items: flex-end; gap: 9px;
+  padding: 6px 10px 7px;
+}
+/* The first pane's header begins where the toolbar ends, and is capped at what
+   is left of the pane: on a narrow window with both panes open there may not be
+   room for it, and it scrolls rather than running under the second pane's own
+   header. Collapsing the toolbar is what gives it the space back. */
+.pane[data-pane="0"] .pane-head {
+  left: calc(var(--controls-w) + 20px);
+  max-width: calc(100% - var(--controls-w) - 30px);
+  overflow-x: auto;
+}
+body.panel-2 .pane[data-pane="0"] .pane-head {
+  left: 110px; max-width: calc(100% - 120px);
+}
+.pane-field select {
+  font: inherit; font-size: 12px; padding: 3px 4px; max-width: 152px;
+  border: 1px solid var(--line); border-radius: calc(var(--radius) - 5px);
+  background: #fff;
+}
+
+.pane-notice {
+  position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+  z-index: 4; background: #fff; border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px); padding: 4px 9px; font-size: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* ---- hover tooltip ---- */
+
+#hoverTip {
+  position: fixed; pointer-events: none; display: none; z-index: 7;
+  background: rgba(28, 25, 22, 0.93); color: #fff; padding: 5px 9px;
+  border-radius: 6px; font-size: 11.5px; max-width: 250px; line-height: 1.4;
+}
+
+/* ---- measure ---- */
+
+#measureBox {
+  position: fixed; top: 10px; right: 12px; z-index: 7;
+  display: flex; align-items: center; gap: 7px;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  padding: 5px 9px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+#measureTotal { font-weight: 600; }
+/* !important because the hover handlers set `cursor` inline on the canvas;
+   without it the crosshair is lost the moment the pointer crosses a feature */
+body.measuring .map canvas { cursor: crosshair !important; }
+.measure-label {
+  background: rgba(255, 255, 255, 0.9); border: 1px solid var(--line);
+  border-radius: 3px; padding: 0 3px; font-size: 11px; white-space: nowrap;
+}
+
+/* ---- overlay panels ---- */
+
+.overlay-panel {
+  position: fixed; top: 16px; right: 16px; z-index: 8;
+  width: 430px; max-height: 84vh; overflow-y: auto;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18); padding: 14px 16px 18px;
+}
+.overlay-panel.wide { width: min(920px, 88vw); }
+/* "How to read this indicator" belongs beside the control that opened it, not
+   across the window over the other pane */
+#infoPanel {
+  left: calc(var(--controls-w) + 20px); right: auto;
+  top: calc(var(--head-h) + 20px);
+  max-height: calc(100vh - var(--head-h) - 30px);
+}
+.overlay-panel .close { position: absolute; top: 8px; right: 10px;
+  font: inherit; font-size: 12px; background: none; border: 0;
+  color: var(--muted); cursor: pointer; }
+.panel-body h2 { font-size: 15px; margin: 0 0 6px; }
+.panel-body h3 { font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--muted); margin: 14px 0 5px; }
+.panel-body .lead { margin: 0 0 10px; }
+.panel-body ul { margin: 0 0 8px; padding-left: 16px; }
+.panel-body .facts { list-style: none; padding: 0; }
+.panel-body .facts li { margin-bottom: 3px; }
+.panel-body code { font-size: 11.5px; background: var(--panel);
+  padding: 1px 3px; border-radius: 3px; }
+/* interventions: what could move this indicator, and what that would do */
+.interventions { list-style: none; padding: 0; }
+.interventions li {
+  border-left: 3px solid var(--accent); padding: 2px 0 4px 9px;
+  margin-bottom: 8px;
+}
+.intervention-name { font-weight: 600; }
+.intervention-impact { color: var(--muted); }
+
+#dictSearch {
+  width: 100%; font: inherit; padding: 6px 8px; margin-bottom: 8px;
+  border: 1px solid var(--line); border-radius: calc(var(--radius) - 4px);
+}
+.dict-tools { display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px; font-size: 12px; }
+.dict-count { color: var(--muted); margin-right: auto; }
+.dict-scroll { max-height: 58vh; overflow-y: auto; }
+.dict-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dict-table th, .dict-table td {
+  text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.dict-table thead th { position: sticky; top: 0; background: #fff;
+  font-size: 10.5px; text-transform: uppercase; color: var(--muted); }
+.dict-note { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+/* ---- popups ---- */
+
+.popup-title { font-weight: 600; margin-bottom: 4px; }
+.popup table { border-collapse: collapse; font-size: 12px; width: 100%; }
+.popup th { text-align: left; font-weight: 400; color: var(--muted);
+  padding: 1px 10px 1px 0; }
+/* values right-aligned and tabular, so a column of them can be compared */
+.popup td { text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+.popup .unit { color: var(--muted); font-size: 11px; }
+.popup-note { margin-top: 6px; font-size: 11px; color: var(--muted);
+  line-height: 1.35; max-width: 260px; }
+
+/* ---- guided tour ---- */
+
+#tourLayer { position: fixed; inset: 0; z-index: 20; }
+#tourMask { position: absolute; inset: 0; background: rgba(24, 21, 18, 0.55); }
+/* the spotlight is a hole punched through the mask by a very large box-shadow
+   on a transparent element -- no canvas and no SVG clip path */
+#tourSpot {
+  position: absolute; border-radius: var(--radius); pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(24, 21, 18, 0.55);
+  outline: 2px solid var(--tour);
+}
+/* above the spotlight: that 9999px shadow paints over anything it is stacked
+   in front of, which is what greyed the popover out from the second step */
+#tourPop {
+  position: absolute; z-index: 1; width: 330px; background: #fff;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28); padding: 13px 15px 11px;
+}
+#tourTitle { font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+#tourText { font-size: 12.5px; line-height: 1.45; }
+#tourNav { display: flex; align-items: center; gap: 6px; margin-top: 11px; }
+#tourStep { margin-right: auto; font-size: 11px; }
+
+#toast {
+  position: fixed; bottom: 14px; left: 14px; z-index: 9;
+  background: var(--ink); color: #fff; padding: 7px 12px;
+  border-radius: calc(var(--radius) - 4px); font-size: 12px; max-width: 380px;
+}

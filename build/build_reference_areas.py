@@ -53,16 +53,17 @@ SOURCES = [
         None,
         'CVEGEO',
     ),
-    # MXL_MZAPob is preferred over mexicali_manzanas_population.geojson:
-    # population is recorded for all but 61 manzanas rather than all but
-    # 682, and it adds 61 rural manzanas.  It has 580 fewer records
-    # overall, the difference being near-empty urban blocks (687 records
-    # holding 85 people between them).  Supplied in Mexico ITRF2008 LCC
-    # and reprojected here.
+    # INEGI 2020 census manzanas with geometries updated by CFC, prepared
+    # by MX/CFC/build_manzanas.py (which reprojects to EPSG:6366 and keys
+    # the sixteen newly mapped Condesa blocks that have no manzana
+    # number).  Replaces MXL_MZAPob.gpkg:02m, which covered Condesa only
+    # partially: 6,274 of its 14,989 lots fell within a manzana against
+    # 12,985 here, and the municipality total rises from 13,656 manzanas
+    # over 151.9 km2 to 19,223 over 236.9 km2.
     (
         'manzanas',
-        os.path.join(DATA, 'MX', 'CFC', 'MXL_MZAPob.gpkg'),
-        '02m',
+        os.path.join(DATA, 'MX', 'CFC', 'mexicali_manzanas.gpkg'),
+        'manzanas',
         'CVEGEO',
     ),
     (

@@ -1,0 +1,29 @@
+{
+ "datasets": [
+  {
+   "slug": "mexicali",
+   "label": {
+    "es": "Mexicali y Condesa",
+    "en": "Mexicali and Condesa"
+   },
+   "codename": "MX_Mexicali_2025_ULI",
+   "year": 2025,
+   "bbox": [
+    -115.60013,
+    32.54356,
+    -115.29113,
+    32.67262
+   ],
+   "regions": {
+    "mexicali": {
+     "es": "Mexicali (área urbana)",
+     "en": "Mexicali (urban area)"
+    },
+    "condesa": {
+     "es": "Distrito Condesa",
+     "en": "Condesa district"
+    }
+   }
+  }
+ ]
+}

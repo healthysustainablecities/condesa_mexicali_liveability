@@ -24,19 +24,27 @@ Every layer carries `area_id`, `area_sqm` and `pop_2025`.
 | Layer | Areas | What it is |
 |---|---|---|
 | `region` | 2 | The Mexicali urban area, and the Condesa development |
-| `grid_100m` | 33,451 | GHS-POP 2025 population grid, vectorised into EPSG:6366 |
+| `grid_100m` | 22,406 | GHS-POP 2025 population grid, vectorised into EPSG:6366 |
 | `agebs` | 436 | INEGI 2020 AGEBs, keyed by `CVEGEO` |
-| `manzanas` | 13,656 | INEGI census blocks (`MXL_MZAPob`), keyed by `CVEGEO` |
+| `manzanas` | 19,223 | INEGI 2020 census blocks with geometries updated by CFC, keyed by `CVEGEO` |
 | `condesa_fraccionamientos` | 40 | Condesa subdivisions |
 | `condesa_lotes` | 14,989 | Individual Condesa lots |
 
 Geometry and identifiers come from the source datasets, so every area is
 listed even where no indicator value can be calculated for it.
 
-Only the grid and region layers tile the whole 328.9 km² study area. Manzanas
-cover 46% of its surface and 77% of its 832,271 residents; AGEBs cover 63% and
-99%. City-wide figures should come from the `region` layer, not from summing
+Only the grid and region layers tile the whole 211.2 km² study area. Manzanas
+cover 75% of its surface and 77% of its 829,652 residents; AGEBs cover 99% of
+both. City-wide figures should come from the `region` layer, not from summing
 the smaller units.
+
+The manzanas were replaced in August 2026 with a set supplied by CFC carrying
+updated geometries (`MX/CFC/build_manzanas.py`). Surface coverage rises from
+46% to 75% and Condesa lots falling within a manzana from 6,274 to 12,985 of
+14,989; population coverage is unchanged at 77%, because most of what the new
+geometries add is unbuilt or rural. Sixteen newly mapped Condesa blocks have no
+INEGI manzana number and carry an identifier assigned by that script,
+recognisable by an `S` where the manzana number would be.
 
 The extent is the **union** of the Mexicali urban area and the Condesa
 development: about 18% of Condesa falls outside the mapped urban area, so the

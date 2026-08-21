@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habitabilidad Mexicali-Condesa</title>
+<!--
+  Libraries are vendored rather than loaded from a CDN: this is meant to run in
+  a workshop room whose wifi may not be there.  Run build/fetch-vendor.sh once
+  to populate vendor/.  Basemap raster tiles still need the internet; the "sin
+  mapa base" option exists so the indicator layers stay legible without it.
+
+  Layout, following the cycling validation site: the maps fill the window and
+  the control panel *floats over* them, scrolling itself and collapsing in three
+  steps.  That is why neither needs a media query — the map never shrinks, and
+  the panel never stretches.
+-->
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="app">
+  <main id="panes">
+    <section class="pane" data-pane="0">
+      <div class="pane-head">
+        <label class="pane-field"><span data-s="region">Región</span>
+          <select class="regionSel"
+                  title="Qué región muestra este panel"></select></label>
+        <label class="pane-field"><span data-s="scale">Escala</span>
+          <select class="scaleSel"
+                  title="A qué áreas se agregan los resultados; la escala cambia lo que se ve"></select></label>
+        <label class="pane-field datasetField"><span data-s="dataset">Conjunto</span>
+          <select class="datasetSel"></select></label>
+        <button class="btn compare" id="compareBtn" data-s="compare"
+                title="Abre un segundo panel para comparar dos regiones o dos escalas">Comparar</button>
+      </div>
+      <div class="map"></div>
+      <div class="pane-notice" hidden></div>
+      <div class="pop-legend" hidden></div>
+    </section>
+
+    <section class="pane" data-pane="1" hidden>
+      <div class="pane-head">
+        <label class="pane-field"><span data-s="region">Región</span>
+          <select class="regionSel"></select></label>
+        <label class="pane-field"><span data-s="scale">Escala</span>
+          <select class="scaleSel"></select></label>
+        <label class="pane-field datasetField"><span data-s="dataset">Conjunto</span>
+          <select class="datasetSel"></select></label>
+      </div>
+      <div class="map"></div>
+      <div class="pane-notice" hidden></div>
+      <div class="pop-legend" hidden></div>
+    </section>
+  </main>
+
+  <!-- Floats over the first pane; scrolls itself; collapses in three steps. -->
+  <aside id="controls">
+    <div id="appHead">
+      <strong id="appTitle">Habitabilidad Mexicali-Condesa</strong>
+      <button class="btn icon" id="settingsBtn"
+              title="Ajustes: capas, mapa base y vistas"
+              aria-label="Ajustes">⚙</button>
+      <button class="btn icon" id="panelToggle"
+              title="Contraer el panel" aria-label="Contraer el panel">⭱</button>
+    </div>
+
+    <div id="panelBody">
+      <!-- What the map is showing, in plain language, before any control. -->
+      <div id="showing" hidden></div>
+
+      <label class="field"><span data-s="theme">Tema</span>
+        <select id="themeSel"
+                title="Los temas del taller: cada indicador pertenece a uno"></select></label>
+      <label class="field"><span data-s="indicator">Indicador</span>
+        <select id="familySel"
+                title="Qué se mide el acceso o la distancia hacia"></select></label>
+      <label class="field" id="measureField"><span data-s="measure">Medida</span>
+        <select id="measureSel"
+                title="Cómo se resume: proporción con acceso, distancia media, diversidad…"></select></label>
+      <label class="field" id="variableField" hidden><span data-s="variable">Variable</span>
+        <select id="variableSel"></select></label>
+      <label class="field" id="groupField" hidden><span data-s="group">Subtipo</span>
+        <select id="groupSel"></select></label>
+      <label class="field" id="networkField"><span data-s="network">Red</span>
+        <select id="networkSel"
+                title="Por qué red se calcula el recorrido: caminando, o en bicicleta según el nivel de estrés del tráfico"></select></label>
+      <label class="field" id="distanceField" hidden><span data-s="distance">Distancia</span>
+        <select id="distanceSel"></select></label>
+    </div>
+
+    <!-- The chart and the legend are one figure: equal-width columns, same
+         count, so a swatch stands directly under its bar. -->
+    <div id="panelFooter">
+      <div id="histo"></div>
+      <div id="legend" class="legend"></div>
+      <div id="ltsLegend" class="lts-legend" hidden></div>
+      <div id="results"></div>
+    </div>
+  </aside>
+
+  <!-- Settings: layers, basemap, and how the two views relate. -->
+  <div id="settingsPanel" class="drawer" hidden>
+    <button class="close" data-close data-s="close">Cerrar</button>
+    <div class="section-title" data-s="layers">Capas</div>
+    <div id="layerToggles"></div>
+    <label class="field"><span data-s="basemap">Mapa base</span>
+      <select id="basemapSel"></select></label>
+    <div class="compare-tools" id="compareTools" hidden>
+      <label class="toggle" title="Mueve ambos mapas juntos">
+        <input type="checkbox" id="linkViewsChk">
+        <span data-s="linkViews">Vincular vistas</span></label>
+      <button class="btn small" id="matchScaleBtn" data-s="matchScale"
+              title="Iguala el nivel de acercamiento de ambos mapas">Igualar escala</button>
+    </div>
+  </div>
+
+  <footer id="actions">
+    <button class="btn tour" id="tourBtn" data-s="tour"
+            title="Recorrido guiado por el explorador">Recorrido</button>
+    <button class="btn" id="measureBtn" data-s="measureTool"
+            title="Mide distancias en línea recta sobre cualquiera de los mapas">Medir distancia (m)</button>
+    <button class="btn" id="dictBtn" data-s="dictionary"
+            title="Todas las variables, con sus unidades y definiciones">Diccionario de datos</button>
+    <button class="btn" id="exportBtn" data-s="exportImage"
+            title="Descarga la vista actual como imagen, con leyenda y fuentes">Exportar imagen</button>
+    <select id="langSel" class="lang" title="Idioma / Language">
+      <option value="es">Español</option>
+      <option value="en">English</option>
+    </select>
+  </footer>
+</div>
+
+<div id="hoverTip"></div>
+
+<div id="measureBox" hidden>
+  <span id="measureTotal"></span>
+  <span id="measureHint" class="muted"></span>
+  <button class="btn small" id="mUndo" data-s="undo">Deshacer</button>
+  <button class="btn small" id="mClear" data-s="clear">Limpiar</button>
+  <button class="btn small" id="mDone" data-s="done">Listo</button>
+</div>
+
+<div class="overlay-panel" id="infoPanel" hidden>
+  <button class="close" data-close data-s="close">Cerrar</button>
+  <div class="panel-body" id="infoBody"></div>
+</div>
+
+<div class="overlay-panel wide" id="dictPanel" hidden>
+  <button class="close" data-close data-s="close">Cerrar</button>
+  <div class="panel-body">
+    <input type="search" id="dictSearch" placeholder="Buscar…">
+    <div class="dict-body"></div>
+  </div>
+</div>
+
+<div id="tourLayer" hidden>
+  <div id="tourMask"></div>
+  <div id="tourPop">
+    <div id="tourTitle"></div>
+    <div id="tourText"></div>
+    <div id="tourNav">
+      <span id="tourStep" class="muted"></span>
+      <button class="btn small" id="tourSkip"></button>
+      <button class="btn small" id="tourPrev"></button>
+      <button class="btn small tour" id="tourNext"></button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/pmtiles.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

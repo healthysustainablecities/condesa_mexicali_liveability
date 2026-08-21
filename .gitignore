@@ -7,3 +7,10 @@ __pycache__/
 # from so it can be fetched again.
 data/raw/*
 !data/raw/.gitkeep
+
+# Dashboard: vendored libraries and tile archives are rebuilt, not versioned.
+dashboard/vendor/
+dashboard/build/_work/
+dashboard/data/**/*.pmtiles
+dashboard/data/**/data_dictionary.xlsx
+dashboard/data/**/data_dictionary.pdf
