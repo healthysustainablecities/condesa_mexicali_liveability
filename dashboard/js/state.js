@@ -26,6 +26,12 @@ export const state = {
   // narrow window needs, and what a media query was doing badly.
   panel: 0,
   isolated: null, // {kind: 'band'|'class'|'lts', value: index}
+  // The area a composite index profile describes in place of its region, from
+  // a clicked map feature: {pane, scale, id, props}. Not written to the hash:
+  // its values come from the feature itself, which a reload has not drawn yet.
+  selected: null,
+  // the domain of a composite index whose components the profile lists
+  focusDomain: null,
   // one indicator, shared by both panes: the comparison is only meaningful
   // when both sides show the same quantity on the same colour scale
   shared: {
@@ -129,6 +135,7 @@ export function writeHash() {
   params.set('b', state.basemap);
   if (state.panel) params.set('pn', String(state.panel));
   if (state.linkViews) params.set('lv', '1');
+  if (state.focusDomain) params.set('fd', state.focusDomain);
   for (const [key, value] of Object.entries({
     f: s.family, m: s.measure, n: s.network,
     d: s.distance, v: s.variable, g: s.group,
@@ -153,6 +160,7 @@ export function readHash() {
   if (params.has('b')) state.basemap = params.get('b');
   if (params.has('pn')) state.panel = Number(params.get('pn')) || 0;
   state.linkViews = params.get('lv') === '1';
+  if (params.has('fd')) state.focusDomain = params.get('fd');
   const s = state.shared;
   for (const [key, field] of Object.entries({
     f: 'family', m: 'measure', n: 'network',

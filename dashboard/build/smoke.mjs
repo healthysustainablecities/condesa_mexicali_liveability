@@ -603,6 +603,96 @@ section('counts are cut where a count means something');
 }
 
 // ---------------------------------------------------------------------------
+section('composite indices carry their structure, and share one scale');
+{
+  const composites = indicators.families.filter((f) => f.composite);
+  const featured = manifest.featured;
+  check(!featured || vocab.family(featured),
+    `manifest.featured resolves to a family (${featured})`);
+  for (const family of composites) {
+    const c = family.composite;
+    const scores = [
+      c.columns.index,
+      c.columns.mean,
+      ...c.domains.map((d) => d.column),
+      ...c.domains.flatMap((d) => d.indicators.map((i) => i.column)),
+    ].filter(Boolean);
+    const missing = scores.filter((column) => !everywhere.has(column));
+    check(missing.length === 0,
+      `${family.id}: structure columns not exported: ${missing.slice(0, 4).join(', ')}`);
+    for (const key of Object.keys(manifest.regions)) {
+      const values = (manifest.region_values || {})[key] || {};
+      check(c.columns.index in values,
+        `${family.id}: region_values.${key} has ${c.columns.index}`);
+    }
+    // the profile colours every petal from the index's classes, which is only
+    // honest if every score of the index is classified the same way
+    const breaks = indicators.breaks[c.columns.index];
+    check(breaks, `${family.id}: the index is classified`);
+    const shared = JSON.stringify(breaks || null);
+    const differing = scores.filter(
+      (column) => JSON.stringify(indicators.breaks[column] || null) !== shared,
+    );
+    check(differing.length === 0,
+      `${family.id}: scores not on the shared classes: ${differing.slice(0, 4).join(', ')}`);
+    if (breaks) {
+      check(breaks.ramp === 'vik', `${family.id}: drawn on the diverging ramp`);
+      const edges = breaks.edges;
+      const middle = edges.length / 2;
+      check(
+        edges.length % 2 === 0
+          && Math.abs((edges[middle - 1] + edges[middle]) / 2
+            - (c.reference_value || 100)) < 1e-9,
+        `${family.id}: the reference is the middle of the middle class `
+        + `(${edges.join(', ')})`,
+      );
+    }
+    for (const domain of c.domains) {
+      if (domain.name) {
+        check(domain.label && domain.label.es && domain.label.en,
+          `${family.id}: domain ${domain.name} is labelled in both languages`);
+      }
+      for (const indicator of domain.indicators) {
+        check(indicator.label && indicator.label.es && indicator.label.en,
+          `${family.id}: indicator ${indicator.id} is labelled in both languages`);
+        // a lens, where given, is one the index labels (the framework's)
+        check(!indicator.lens || (c.lenses || {})[indicator.lens],
+          `${family.id}: indicator ${indicator.id} has a labelled lens (${indicator.lens})`);
+      }
+      // a domain colour, where given, is what the profile fills petals with
+      if (domain.colour) {
+        const hex = /^#[0-9a-fA-F]{6}$/;
+        check(hex.test(domain.colour.fill || '') && hex.test(domain.colour.stroke || ''),
+          `${family.id}: domain ${domain.name} has a fill and stroke colour`);
+      }
+    }
+    const lensed = c.domains.flatMap((d) => d.indicators).filter((i) => i.lens).length;
+    const coloured = c.domains.filter((d) => d.colour).length;
+    console.log(`  ${family.id}: ${coloured} domains coloured, ${lensed} indicators with a lens`);
+    console.log(`  ${family.id}: ${c.domains.length} domains, `
+      + `${c.domains.reduce((n, d) => n + d.indicators.length, 0)} indicators, `
+      + `classes ${((breaks || {}).edges || []).join(' / ')}`);
+  }
+  if (!composites.length) console.log('  no composite indices in this dataset');
+}
+
+// ---------------------------------------------------------------------------
+section('each language\'s conceptual model is present');
+{
+  const models = manifest.conceptual_models || {};
+  for (const [code, model] of Object.entries(models)) {
+    const file = path.join(ROOT, 'data', slug, model.file);
+    check(fs.existsSync(file), `conceptual model for ${code}: ${model.file} is deployed`);
+    check(['image', 'document'].includes(model.type),
+      `conceptual model for ${code}: shown as an image or a document (${model.type})`);
+    if (fs.existsSync(file)) {
+      console.log(`  ${code}: ${model.file} (${Math.round(fs.statSync(file).size / 1024)} KB)`);
+    }
+  }
+  if (!Object.keys(models).length) console.log('  none configured');
+}
+
+// ---------------------------------------------------------------------------
 section('region values are present for both regions');
 for (const key of Object.keys(manifest.regions)) {
   const values = (manifest.region_values || {})[key];

@@ -140,6 +140,54 @@ const S = {
   theme: { es: 'Tema', en: 'Theme' },
   byTheme: { es: 'Por tema', en: 'By theme' },
 
+  // the composite index profile
+  profileTitle: { es: 'Perfil del índice', en: 'Index profile' },
+  profileIndex: { es: 'Índice', en: 'Index' },
+  profileAll: {
+    es: 'Mostrar el índice en el mapa', en: 'Show the index on the map',
+  },
+  profileArea: { es: 'Área seleccionada', en: 'Selected area' },
+  profileClear: { es: 'Volver a la región', en: 'Back to the region' },
+  profileReference: {
+    es: 'Puntos por encima o por debajo de la referencia, el promedio en los puntos de muestra del área de estudio (0; una puntuación de 100 en los datos)',
+    en: 'Points above or below the reference, the average over the study area’s sample points (0; a score of 100 in the data)',
+  },
+  profileSelf: {
+    es: 'La región es su propia referencia, así que su perfil queda cerca de 0. Seleccione un área en el mapa o compare con otra región para ver las diferencias.',
+    en: 'The region is its own reference, so its profile sits close to 0. Select an area on the map, or compare another region, to see the differences.',
+  },
+  profileHint: {
+    es: 'Cada pétalo es un indicador, del color de su dominio; haga clic en uno para mapearlo, en un dominio para ver sus indicadores, o en un área del mapa para ver su perfil.',
+    en: 'Each petal is an indicator, in its domain’s colour; click one to map it, a domain to list its indicators, or an area on the map to see its own profile.',
+  },
+  profileDomains: { es: 'Dominios', en: 'Domains' },
+  profileIndicator: { es: 'indicador', en: 'indicator' },
+  profileIndicators: { es: 'indicadores', en: 'indicators' },
+  profileLens: { es: 'Enfoque de cada indicador', en: 'Each indicator’s lens' },
+  profileLensHelp: {
+    es: 'El enfoque es la forma en que el indicador analiza el lugar o aspecto que mide (p. ej., el acceso a la salud desde el enfoque de la proximidad).',
+    en: 'A lens is the way an indicator analyses the place or aspect it measures (e.g. healthcare access through a proximity lens).',
+  },
+  lenses: { es: 'Enfoques', en: 'Lenses' },
+  conceptualModel: { es: 'Modelo conceptual', en: 'Conceptual model' },
+  modelOpen: { es: 'Abrir en tamaño completo', en: 'Open full size' },
+  modelZoom: { es: 'Haga clic para acercar o alejar', en: 'Click to zoom in or out' },
+  methodsScore: { es: 'puntuación', en: 'score' },
+  profileMean: { es: 'Nivel medio', en: 'Mean level' },
+  profilePenalty: {
+    es: 'penalización por desequilibrio', en: 'imbalance penalty',
+  },
+  profilePenaltyHelp: {
+    es: 'Cuanto más desiguales son los ámbitos, mayor es la penalización: un perfil equilibrado puntúa más que uno desigual con el mismo promedio.',
+    en: 'The more uneven the domains, the larger the penalty: a balanced profile scores higher than an uneven one with the same average.',
+  },
+  profileComponents: { es: 'Componentes', en: 'Components' },
+  profileThreshold: { es: 'umbral suave de {d}', en: 'soft threshold of {d}' },
+  profileWeight: { es: 'peso', en: 'weight' },
+  profileExcluded: {
+    es: 'excluido: no varía', en: 'left out: does not vary',
+  },
+
   // guided tour
   tour: { es: 'Recorrido', en: 'Tour' },
   back: { es: 'Atrás', en: 'Back' },
@@ -211,6 +259,10 @@ const TERMS = {
   sum: { es: 'suma', en: 'sum' },
   higher_is_better: { es: 'más alto es mejor', en: 'higher is better' },
   lower_is_better: { es: 'más bajo es mejor', en: 'lower is better' },
+  // without brackets of its own: the legend title puts the units in brackets
+  'index (100 = reference)': {
+    es: 'índice, 100 = referencia', en: 'index, 100 = reference',
+  },
 };
 
 /**

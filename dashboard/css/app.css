@@ -335,6 +335,156 @@ body.panel-2 #appTitle { display: none; }
 .histo-target { margin-top: 6px; font-size: 11px; line-height: 1.35;
   color: var(--ink); font-weight: 600; }
 
+/* ---- the composite index profile ----
+
+   Takes the distribution chart's place above the legend, as one card with it:
+   the petals and the legend's swatches are the same classes. */
+
+#profile {
+  margin-top: 12px; background: #fff; border: 1px solid var(--line);
+  border-bottom: 0; padding: 8px 10px;
+  border-radius: calc(var(--radius) - 4px) calc(var(--radius) - 4px) 0 0;
+}
+#profile .section-title { margin-top: 0; }
+#profile:not([hidden]) + #histo:empty + #legend {
+  margin-top: 0;
+  border-radius: 0 0 calc(var(--radius) - 4px) calc(var(--radius) - 4px);
+}
+.profile-head { display: flex; align-items: baseline; gap: 6px;
+  flex-wrap: wrap; margin-bottom: 2px; }
+.profile-subject { font-weight: 600; font-size: 12.5px; margin-right: auto; }
+.profile-chip {
+  font: inherit; font-size: 11px; padding: 1px 8px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel); color: inherit;
+}
+.profile-chip:hover { border-color: var(--accent); }
+.profile-chart { display: block; width: 100%; height: auto; }
+/* a faint dark edge rather than a white one: a petal in the reference class is
+   drawn in the diverging ramp's pale midpoint, and a white edge on the white
+   card left it invisible */
+.profile-chart .petal { cursor: pointer; stroke: rgba(74, 68, 60, 0.45);
+  stroke-width: 1; }
+/* the mapped petal keeps its domain's colour and takes a heavy outline */
+.profile-chart .petal:hover { stroke-width: 2; }
+.profile-chart .petal.focus { stroke: var(--ink) !important; stroke-width: 2.2; }
+.profile-chart .grid { fill: none; stroke: var(--line); stroke-width: 0.8; }
+.profile-chart .grid.limit { stroke-dasharray: 1 2; }
+/* a petal or indicator whose value lies beyond the scale */
+.profile-chart .clip { fill: none; stroke: var(--ink); stroke-width: 1.5;
+  stroke-linecap: round; stroke-linejoin: round; }
+.profile-self { color: var(--ink); background: var(--panel);
+  border-radius: 4px; padding: 3px 6px; }
+.profile-chart .ring { fill: none; stroke: var(--ink); stroke-width: 1;
+  stroke-dasharray: 3 2; }
+.profile-chart .whisker { stroke: var(--ink); stroke-width: 1.3;
+  stroke-linecap: round; }
+.profile-chart .marker { fill: var(--ink); stroke: #fff; stroke-width: 1; }
+.profile-chart .marker.compare { fill: #fff; stroke: var(--compare);
+  stroke-width: 2; }
+/* the conceptual model's vocabulary: each domain's arc on the rim, a dashed
+   connector to its node, and its score (after its penalty) across its sector */
+.profile-chart .domain-rim { fill: none; stroke-width: 3; stroke-linecap: round; }
+.profile-chart .connector { stroke-width: 1; stroke-dasharray: 2 2; }
+.profile-chart .domain-score { fill: none; stroke-width: 1.6;
+  stroke-dasharray: 4 2; }
+.profile-chart .domain-node { cursor: pointer; }
+.profile-chart .domain-node circle { stroke-width: 2; }
+.profile-chart .domain-node text { font-size: 8.5px; font-weight: 700;
+  fill: var(--ink); }
+.profile-chart .domain-node:hover circle,
+.profile-chart .domain-node.focus circle { stroke-width: 3.2; }
+.profile-chart .axis-label { font-size: 10px; fill: var(--ink);
+  cursor: pointer; }
+.profile-chart .axis-label.focus { font-weight: 700; }
+.profile-chart .tick { font-size: 8.5px; fill: var(--muted); }
+.profile-chart .centre { cursor: pointer; }
+.profile-chart .centre-value { font-size: 14px; font-weight: 700; }
+.profile-chart .centre.focus circle { stroke-width: 4.5; }
+.profile-chart .centre-label { font-size: 8.5px; fill: var(--muted); }
+.profile-note { font-size: 10.5px; color: var(--muted); line-height: 1.35;
+  margin: 2px 0 4px; }
+.profile-strip {
+  display: grid; grid-template-columns: minmax(0, 105px) 1fr auto;
+  gap: 3px 8px; align-items: center; margin: 2px 0 6px;
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.strip-name { color: var(--muted); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.strip-bar { position: relative; height: 9px; background: var(--panel);
+  border-radius: 2px; }
+.strip-fill { position: absolute; top: 0; bottom: 0; left: 0;
+  background: var(--accent); border-radius: 2px 0 0 2px; }
+.strip-penalty { position: absolute; top: 0; bottom: 0;
+  background: repeating-linear-gradient(45deg, var(--muted) 0 2px,
+    transparent 2px 4px); }
+.strip-bar b, .comp-bar b { position: absolute; top: -2px; bottom: -2px;
+  width: 1px; background: var(--ink); }
+.strip-sum { text-align: right; white-space: nowrap; }
+.profile-list { list-style: none; margin: 2px 0 4px; padding: 0; }
+.profile-list li {
+  display: grid; grid-template-columns: 1fr 72px 38px; gap: 6px;
+  align-items: center; padding: 3px 4px; border-radius: 4px;
+  font-size: 11.5px; cursor: pointer;
+}
+.profile-list li:hover, .profile-list li.mapped { background: var(--panel); }
+.comp-note { display: block; font-size: 10px; color: var(--muted); }
+.comp-bar { position: relative; height: 8px; background: var(--panel);
+  border-radius: 2px; }
+.comp-bar i { position: absolute; top: 0; bottom: 0; border-radius: 2px;
+  border: 1px solid transparent; box-sizing: border-box; }
+.profile-list li.domain-head { grid-template-columns: 14px 1fr 38px;
+  font-weight: 600; }
+.profile-list li.domain-head.open { background: var(--panel); }
+.profile-list li.domain-head .comp-note { display: inline; font-weight: 400;
+  margin-left: 4px; }
+.profile-list li.indicator { padding-left: 22px; }
+/* a domain node, as on the conceptual model: its colour, and a ring */
+.node { display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--muted); background: #fff; box-sizing: border-box; }
+/* a lens (enfoque), as the conceptual model's outlined lens boxes */
+.lens { display: inline-block; font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink);
+  border: 1px solid var(--ink); border-radius: 2px; padding: 0 3px;
+  margin-left: 3px; vertical-align: 1px; background: #fff; line-height: 1.5; }
+.lens-key { font-weight: 400; text-transform: none; letter-spacing: 0;
+  color: var(--muted); margin-left: 6px; }
+.profile-chip.model { border-color: #4e8ef7; color: #2f6fd6; }
+
+/* ---- the conceptual model ----
+
+   Its figure beside how the featured index is calculated; the two columns
+   stack where there is no room for both, without a media query. */
+
+#modelPanel { width: min(1180px, 94vw); max-height: 92vh; top: 4vh;
+  right: 3vw; }
+.model-layout { display: grid; gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.model-figure { display: block; width: 100%; max-height: 74vh; overflow: auto;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.model-figure img { display: block; width: 100%; height: auto; }
+.model-figure.zoomable { cursor: zoom-in; }
+.model-figure.zoomed { cursor: zoom-out; }
+.model-figure.zoomed img { width: 240%; max-width: none; }
+iframe.model-figure { height: 74vh; }
+.model-open { display: inline-block; margin-top: 6px; font-size: 12px; }
+.model-methods p { margin: 0 0 8px; line-height: 1.45; }
+.model-steps { padding-left: 18px; margin: 0 0 10px; }
+.model-steps li { margin-bottom: 8px; line-height: 1.45; }
+.formula { font-family: Georgia, serif; font-size: 13px; margin: 4px 0 0;
+  padding: 5px 8px; background: var(--panel); border-radius: 4px;
+  overflow-x: auto; white-space: nowrap; }
+.model-domains { list-style: none; padding: 0; margin: 0 0 8px; }
+.model-domains li { display: flex; align-items: center; gap: 6px;
+  margin-bottom: 3px; }
+.model-domains .comp-note { display: inline; }
+.model-lenses { line-height: 2; }
+.model-lenses .lens { font-size: 10px; padding: 1px 6px; margin: 0 3px 0 0; }
+.model-references { padding-left: 18px; margin: 0 0 8px; font-size: 12px; }
+.model-references li { margin-bottom: 5px; line-height: 1.4; }
+.model-references a { overflow-wrap: anywhere; }
+.comp-value { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* ---- panes ---- */
 
 #panes {

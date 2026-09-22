@@ -93,6 +93,9 @@
     <!-- The chart and the legend are one figure: equal-width columns, same
          count, so a swatch stands directly under its bar. -->
     <div id="panelFooter">
+      <!-- A composite index is shown as a radial profile in the chart's
+           place (js/profile.js). -->
+      <div id="profile" hidden></div>
       <div id="histo"></div>
       <div id="legend" class="legend"></div>
       <div id="ltsLegend" class="lts-legend" hidden></div>
@@ -121,6 +124,8 @@
             title="Recorrido guiado por el explorador">Recorrido</button>
     <button class="btn" id="measureBtn" data-s="measureTool"
             title="Mide distancias en línea recta sobre cualquiera de los mapas">Medir distancia (m)</button>
+    <button class="btn" id="modelBtn" data-s="conceptualModel" hidden
+            title="El modelo conceptual y cómo se calcula el índice">Modelo conceptual</button>
     <button class="btn" id="dictBtn" data-s="dictionary"
             title="Todas las variables, con sus unidades y definiciones">Diccionario de datos</button>
     <button class="btn" id="exportBtn" data-s="exportImage"
@@ -145,6 +150,14 @@
 <div class="overlay-panel" id="infoPanel" hidden>
   <button class="close" data-close data-s="close">Cerrar</button>
   <div class="panel-body" id="infoBody"></div>
+</div>
+
+<!-- The conceptual model the indicators are organised by, beside how the
+     featured composite index is calculated (js/model.js). -->
+<div class="overlay-panel wide" id="modelPanel" role="dialog"
+     aria-modal="true" aria-labelledby="modelTitle" hidden>
+  <button class="close" data-close data-s="close">Cerrar</button>
+  <div class="panel-body" id="modelBody"></div>
 </div>
 
 <div class="overlay-panel wide" id="dictPanel" hidden>

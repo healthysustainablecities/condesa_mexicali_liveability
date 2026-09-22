@@ -22,6 +22,8 @@ for slug in "$@"; do
            data_dictionary.csv data_dictionary.xlsx data_dictionary.pdf; do
     [ -e "$src/$f" ] && cp "$src/$f" "$dest/$f"
   done
+  # each language's conceptual model figure, where the region configures one
+  cp "$src"/conceptual_model_* "$dest/" 2>/dev/null || true
   cp "$WORK/${slug}"_*.pmtiles "$dest/" 2>/dev/null || true
   ls -lh "$dest"
 done

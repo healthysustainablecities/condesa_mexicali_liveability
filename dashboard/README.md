@@ -42,7 +42,8 @@ bash serve.sh                  # http://localhost:8123/
 which `file://` does not support, so opening `index.html` directly will show an
 empty map. Everything else is local.
 
-Basemap tiles (CARTO, Esri) are the one thing that still needs the internet.
+Basemap tiles (Esri World Light Gray Canvas and World Imagery, neither needing an
+API key) are the one thing that still needs the internet.
 Choose **sin mapa base / no basemap** when there is none: the indicator layers
 still render.
 

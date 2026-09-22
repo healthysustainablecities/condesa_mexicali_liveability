@@ -12,6 +12,8 @@ import { exportImage } from './imageexport.js';
 import { renderInfo } from './info.js';
 import { MeasureTool } from './measure.js';
 import { Pane } from './pane.js';
+import { renderProfile } from './profile.js';
+import { modelFor, renderModel } from './model.js';
 import {
   activePanes, readHash, state, subscribe, batch, update, updateSilent,
 } from './state.js';
@@ -163,7 +165,10 @@ class App {
       });
       if (!BASEMAP_KEYS.includes(s.basemap)) s.basemap = 'streets';
       if (!s.shared.family || !this.vocab.family(s.shared.family)) {
-        Object.assign(s.shared, this.vocab.firstSelection(this.allColumns()));
+        Object.assign(
+          s.shared,
+          this.vocab.firstSelection(this.allColumns(), manifest.featured),
+        );
       } else {
         Object.assign(
           s.shared, this.vocab.coerce(s.shared, this.allColumns()),
@@ -280,11 +285,15 @@ class App {
     }
     document.querySelectorAll('.pane').forEach((section, i) => {
       section.querySelector('.datasetSel').addEventListener('change', (e) => {
-        update((s) => { s.panes[i].dataset = e.target.value; }, 'dataset');
+        update((s) => {
+          s.panes[i].dataset = e.target.value;
+          s.selected = null;
+        }, 'dataset');
       });
       section.querySelector('.regionSel').addEventListener('change', (e) => {
         update((s) => {
           s.panes[i].region = e.target.value;
+          s.selected = null;
           const scales = this.datasets.get(s.panes[i].dataset)
             .manifest.regions[e.target.value].scales;
           if (!scales.includes(s.panes[i].scale)) [s.panes[i].scale] = scales;
@@ -292,7 +301,10 @@ class App {
         this.fitPaneToRegion(i);
       });
       section.querySelector('.scaleSel').addEventListener('change', (e) => {
-        update((s) => { s.panes[i].scale = e.target.value; }, 'scale');
+        update((s) => {
+          s.panes[i].scale = e.target.value;
+          s.selected = null;
+        }, 'scale');
       });
     });
 
@@ -308,14 +320,25 @@ class App {
       this.dictionary.render($('dictSearch').value);
       this.openPanel('dictPanel');
     });
+    $('modelBtn').addEventListener('click', () => this.openConceptualModel());
+    // the conceptual model is the one panel read at length, so it closes on
+    // Escape and returns focus to what opened it
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !$('modelPanel').hidden) {
+        this.closeConceptualModel();
+      }
+    });
     $('dictSearch').addEventListener('input', (e) =>
       this.dictionary.render(e.target.value));
     // the settings drawer is a .drawer, not an .overlay-panel: matching only
     // the latter made closest() return null and the handler throw, which is why
     // the cog's Close button did nothing at all
     document.querySelectorAll('[data-close]').forEach((button) => {
-      button.addEventListener('click', () =>
-        button.closest('.overlay-panel, .drawer').setAttribute('hidden', ''));
+      button.addEventListener('click', () => {
+        const panel = button.closest('.overlay-panel, .drawer');
+        if (panel.id === 'modelPanel') this.closeConceptualModel();
+        else panel.setAttribute('hidden', '');
+      });
     });
     $('exportBtn').addEventListener('click', () => this.exportCurrentView());
   }
@@ -333,8 +356,15 @@ class App {
       if (changed === 'distanceSel') next.distance = $('distanceSel').value;
       if (changed === 'variableSel') next.variable = $('variableSel').value;
       if (changed === 'groupSel') next.group = $('groupSel').value;
+      const family = s.shared.family;
       Object.assign(s.shared, this.vocab.coerce(next, this.allColumns()));
       s.isolated = null;
+      // a selected area and a focused domain belong to the index they were
+      // chosen in; another indicator has neither
+      if (s.shared.family !== family) {
+        s.selected = null;
+        s.focusDomain = null;
+      }
     }, 'indicator');
   }
 
@@ -572,8 +602,22 @@ class App {
       $('histo'), this.resolved, this.classification, panes, datasets,
       statsEntries,
     );
+    // A composite index is read through its profile rather than through its
+    // distribution, so the profile takes the chart's place above the legend.
+    const composite = this.resolved && this.resolved.composite;
+    $('profile').hidden = !composite;
+    if (composite) {
+      $('histo').innerHTML = '';
+      renderProfile($('profile'), this, panes, datasets, statsEntries);
+    } else {
+      $('profile').innerHTML = '';
+    }
     this.renderLayerToggles();
     this.renderPanelToggle();
+    // the conceptual model follows the language, and is offered only where
+    // the dataset has one
+    $('modelBtn').hidden = !this.hasConceptualModel();
+    if (!$('modelPanel').hidden) this.renderConceptualModel();
     this.fill(
       $('basemapSel'),
       BASEMAP_KEYS.map((key) => [key, t(key === 'none' ? 'none' : key)]),
@@ -646,6 +690,55 @@ class App {
     }
   }
 
+  /**
+   * Make a clicked area the subject of the composite index profile.
+   *
+   * The feature's own properties are kept: they already carry every score of
+   * the index for that area, and querying the map again on each repaint would
+   * lose them as soon as the area scrolled out of view.
+   */
+  selectArea(index, feature) {
+    const properties = { ...(feature.properties || {}) };
+    update((s) => {
+      s.selected = {
+        pane: index,
+        scale: s.panes[index].scale,
+        id: properties.area_id,
+        props: properties,
+      };
+    }, 'select');
+  }
+
+  clearSelection() {
+    if (!state.selected) return;
+    update((s) => { s.selected = null; }, 'select');
+  }
+
+  /** Map one score of the composite index, and focus the domain it is in. */
+  focusComponent(column, domain) {
+    batch((s) => {
+      s.focusDomain = domain;
+      Object.assign(
+        s.shared,
+        this.vocab.coerce({ ...s.shared, variable: column }, this.allColumns()),
+      );
+      s.isolated = null;
+    }, 'indicator');
+  }
+
+  /** Show the dataset's featured family (used by the tour). */
+  showFeatured() {
+    const dataset = this.datasets.get(state.panes[0].dataset);
+    const featured = dataset && dataset.manifest.featured;
+    if (!featured || state.shared.family === featured) return;
+    batch((s) => {
+      Object.assign(
+        s.shared, this.vocab.firstSelection(this.allColumns(), featured),
+      );
+      s.isolated = null;
+    }, 'indicator');
+  }
+
   /** Turn the comparison view on or off (used by the tour). */
   setCompare(on) {
     if (state.compare === on) return;
@@ -662,6 +755,49 @@ class App {
 
   measureActive(index) {
     return this.measure && this.measure.isActive(this.panes[index].map);
+  }
+
+  /** The dataset of the first pane, which the conceptual model belongs to. */
+  modelDataset() {
+    return this.datasets.get(state.panes[0].dataset) || null;
+  }
+
+  hasConceptualModel() {
+    return Boolean(modelFor(this.modelDataset()));
+  }
+
+  /** The featured composite index's structure, or the first one there is. */
+  featuredStructure(dataset) {
+    const families = (dataset.indicators || {}).families || [];
+    const featured = families.find((f) =>
+      f.id === dataset.manifest.featured && f.composite)
+      || families.find((f) => f.composite);
+    return featured ? featured.composite : null;
+  }
+
+  renderConceptualModel() {
+    const dataset = this.modelDataset();
+    if (dataset) {
+      renderModel($('modelBody'), dataset, this.featuredStructure(dataset));
+    }
+  }
+
+  openConceptualModel() {
+    this.modelOpener = document.activeElement;
+    this.renderConceptualModel();
+    this.openPanel('modelPanel');
+    $('modelPanel').querySelector('.close').focus();
+  }
+
+  closeConceptualModel() {
+    $('modelPanel').setAttribute('hidden', '');
+    // back to what opened it, or else to the footer's button, so focus is not
+    // left on the hidden panel's Close button
+    const opener = this.modelOpener;
+    const back = opener && opener !== document.body && document.body.contains(opener)
+      ? opener : $('modelBtn');
+    if (back && !back.hidden) back.focus();
+    this.modelOpener = null;
   }
 
   openPanel(id) {

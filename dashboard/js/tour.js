@@ -36,6 +36,33 @@ function steps(app) {
       },
     },
     {
+      element: '#profile',
+      title: {
+        es: 'El Índice de Habitabilidad Urbana',
+        en: 'The Urban Liveability Index',
+      },
+      text: {
+        es: 'El explorador abre con el índice compuesto (provisional). Cada '
+          + 'pétalo es un indicador, del color de su dominio: crece hacia '
+          + 'fuera del anillo punteado (0, la referencia) donde el indicador '
+          + 'supera su promedio, y hacia dentro donde queda por debajo. Haga '
+          + 'clic en un pétalo para mapearlo, en un dominio para ver sus '
+          + 'componentes, o en un área del mapa para ver su propio perfil. La '
+          + 'franja inferior muestra por qué el índice no es un simple '
+          + 'promedio: se resta una penalización cuando los dominios están '
+          + 'desequilibrados.',
+        en: 'The explorer opens on the (provisional) composite index. Each '
+          + 'petal is an indicator, in its domain’s colour: it grows outward '
+          + 'from the dashed ring (0, the reference) where the indicator does '
+          + 'better than its average, and inward where it falls short. Click '
+          + 'a petal to map it, a domain to see its components, or an area on '
+          + 'the map to see its own profile. The strip below shows why the '
+          + 'index is not a simple average: a penalty is subtracted when the '
+          + 'domains are out of balance.',
+      },
+      before: () => app.showFeatured(),
+    },
+    {
       element: '#showing',
       title: { es: 'Qué muestra el mapa', en: 'What the map shows' },
       text: {

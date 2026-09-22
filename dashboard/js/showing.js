@@ -34,7 +34,10 @@ export function showingTitle(resolved, vocab) {
   const family = resolved.family;
   const parts = [label(family.label, family.id)];
   if (resolved.selection.variable) {
-    parts.push(vocab.variableLabel(resolved.selection.variable));
+    // a composite index's own score is labelled as the index itself, and
+    // "Index · Index" says nothing twice
+    const variable = vocab.variableLabel(resolved.selection.variable);
+    if (variable !== parts[0]) parts.push(variable);
   }
   if (resolved.selection.group) {
     parts.push(resolved.selection.group.replace(/_/g, ' '));

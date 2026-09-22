@@ -13,8 +13,15 @@ import { integer, label, number, t } from './strings.js';
 
 const BASEMAPS = {
   streets: {
-    tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
-    attribution: '© OpenStreetMap contributors © CARTO',
+    // Esri World Light Gray Canvas: CARTO's light_all tiles now carry an "API
+    // KEY REQUIRED" watermark without a key.  This one needs none, sends CORS
+    // headers (so the image export can read the canvas), and is as quiet under
+    // a choropleth.
+    tiles: [
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    ],
+    attribution: 'Esri, HERE, Garmin, © OpenStreetMap contributors',
+    maxzoom: 16,
   },
   satellite: {
     tiles: [
@@ -33,6 +40,10 @@ const OVERLAY_STYLE = {
   destinations: { color: '#d94801', radius: 4 },
   default: { color: '#6a51a3', radius: 3.5 },
 };
+
+// The outline of the area a composite index profile is describing.
+const SELECTED_PAINT = { 'line-color': '#1b1b1b', 'line-width': 3 };
+const NOTHING_SELECTED = ['==', ['get', 'area_id'], '__none__'];
 
 export class Pane {
   constructor(index, container, app) {
@@ -131,6 +142,8 @@ export class Pane {
       sources[`basemap-${key}`] = {
         type: 'raster', tiles: basemap.tiles, tileSize: 256,
         attribution: basemap.attribution,
+        // beyond its last level a basemap is overzoomed, not requested
+        ...(basemap.maxzoom ? { maxzoom: basemap.maxzoom } : {}),
       };
     }
     if (this.dataset.hasNetwork) {
@@ -281,6 +294,11 @@ export class Pane {
         'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.1, 16, 0.7],
       },
     });
+    map.addLayer({
+      id: 'choropleth-selected', type: 'line', source: 'scale_grid',
+      'source-layer': 'scale_grid', filter: NOTHING_SELECTED,
+      paint: SELECTED_PAINT,
+    });
 
     if (this.dataset.hasNetwork) {
       map.addLayer({
@@ -419,7 +437,7 @@ export class Pane {
     // means replacing the layer.  Only do it when the scale actually changed.
     if (this.currentScale === scaleKey) return;
     this.currentScale = scaleKey;
-    for (const id of ['choropleth', 'choropleth-outline']) {
+    for (const id of ['choropleth', 'choropleth-outline', 'choropleth-selected']) {
       // order matters: the replacement must go back beneath the overlays
       const before = this.firstOverlayId();
       const existing = map.getLayer(id);
@@ -430,12 +448,16 @@ export class Pane {
         'source-layer': source,
         paint: {},
       };
-      const paint = id === 'choropleth'
+      let paint = id === 'choropleth'
         ? { 'fill-color': NO_DATA, 'fill-opacity': 0.7 }
         : {
           'line-color': 'rgba(60,55,50,0.35)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.1, 16, 0.7],
         };
+      if (id === 'choropleth-selected') {
+        paint = SELECTED_PAINT;
+        definition.filter = NOTHING_SELECTED;
+      }
       map.removeLayer(id);
       map.addLayer({ ...definition, paint }, before);
     }
@@ -475,6 +497,16 @@ export class Pane {
         }
       }
       this.setNotice(usable && showFill ? '' : (usable ? '' : t('notAvailable')));
+    }
+    // outline the area the profile is describing, on the pane it was chosen in
+    if (map.getLayer('choropleth-selected')) {
+      const selected = state.selected;
+      const mine = selected && selected.pane === this.index
+        && selected.scale === config.scale;
+      map.setFilter(
+        'choropleth-selected',
+        mine ? ['==', ['get', 'area_id'], selected.id] : NOTHING_SELECTED,
+      );
     }
 
     this.setBasemap(state.basemap);
@@ -575,6 +607,14 @@ export class Pane {
       this.map.getLayer(id));
     const features = this.map.queryRenderedFeatures(event.point, { layers });
     if (!features.length) return;
+    // With a composite index showing, clicking an area makes it the subject of
+    // the profile in the sidebar rather than opening a popup over the map: the
+    // profile is the fuller answer to "what is this area like".
+    const area = features.find((f) => f.layer.id === 'choropleth');
+    if (area && this.app.resolved && this.app.resolved.composite) {
+      this.app.selectArea(this.index, area);
+      return;
+    }
     const feature = features[0];
     const html = feature.layer.id === 'network'
       ? this.networkPopup(feature)

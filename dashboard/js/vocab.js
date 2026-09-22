@@ -177,6 +177,7 @@ export class Vocabulary {
       category: described.category || '',
       overlay: f.overlay || null,
       uli: f.uli || null,
+      composite: f.composite || null,
       title: this.title(selection),
     };
   }
@@ -262,8 +263,24 @@ export class Vocabulary {
     return sel;
   }
 
-  /** The first selection worth showing when the app opens. */
-  firstSelection(available) {
+  /**
+   * The first selection worth showing when the app opens.
+   *
+   * The dataset's featured family first -- a composite index, where the region
+   * has one -- on its first variable, which is the index itself.
+   */
+  firstSelection(available, featured = null) {
+    if (featured && this.byId.has(featured)) {
+      const f = this.byId.get(featured);
+      const variables = this.variablesOf(featured);
+      const sel = this.coerce({
+        family: featured,
+        measure: Object.keys(f.measures)[0],
+        network: 'walk',
+        variable: variables[0] || null,
+      }, available);
+      if (sel.family === featured && this.columnsFor(sel).length) return sel;
+    }
     const preferred = ['denue_fresh_food', 'fresh_food_market', 'blue_space'];
     for (const id of preferred) {
       if (!this.byId.has(id)) continue;

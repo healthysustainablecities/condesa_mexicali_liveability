@@ -32,6 +32,15 @@ export const BATLOW = [
   '#011959', '#12557C', '#3E7A5E', '#8C963F', '#DFA050', '#FACCFA',
 ];
 
+// vik (Crameri), sampled at eleven stops: the diverging ramp a composite index
+// is drawn on, dark blue through a pale midpoint to dark red, so that above and
+// below the reference read as opposites rather than as more and less of one
+// thing.
+export const VIK = [
+  '#001261', '#02397a', '#116496', '#5496b7', '#a7c9da', '#ebe6e2',
+  '#e2baa2', '#cd8961', '#b85c28', '#872406', '#5b0108',
+];
+
 function lerpHex(a, b, t) {
   const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
   const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
@@ -47,9 +56,14 @@ function lerpHex(a, b, t) {
  * picking the nearest of six stops would hand two of them the same colour.
  */
 export function batlowAt(t) {
-  const x = Math.max(0, Math.min(1, t)) * (BATLOW.length - 1);
-  const i = Math.min(Math.floor(x), BATLOW.length - 2);
-  return lerpHex(BATLOW[i], BATLOW[i + 1], x - i);
+  return rampAt(BATLOW, t);
+}
+
+/** Any ramp's stops, sampled continuously at `t` in [0, 1]. */
+export function rampAt(stops, t) {
+  const x = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+  const i = Math.min(Math.floor(x), stops.length - 2);
+  return lerpHex(stops[i], stops[i + 1], x - i);
 }
 
 export const NO_DATA = '#c9c4bd';
@@ -58,7 +72,16 @@ export const LTS_COLORS = { 1: '#1a9850', 2: '#a6d96a', 3: '#fdae61', 4: '#d7302
 
 const SENTINEL = -999999;
 
-function ramp(direction, n) {
+function ramp(direction, n, breaks) {
+  // A diverging ramp where the exporter asks for one. A composite index's
+  // classes are symmetric about its reference, so sampling vik evenly puts the
+  // reference class on the ramp's pale midpoint. Blue is the favourable end.
+  if (breaks && breaks.ramp === 'vik') {
+    const stops = Array.from(
+      { length: n }, (_, i) => rampAt(VIK, i / Math.max(1, n - 1)),
+    );
+    return direction === 'lower_is_better' ? stops : stops.slice().reverse();
+  }
   // one ramp, reversed where a low value is the good outcome, so the
   // favourable end of the scale is always the same colour
   const stops = Array.from(
@@ -96,7 +119,7 @@ export function classify(resolved, breaks, target) {
   if (!breaks) return null;
 
   if (breaks.kind === 'categories') {
-    const colors = ramp(resolved.direction, breaks.values.length);
+    const colors = ramp(resolved.direction, breaks.values.length, breaks);
     const classes = breaks.values.map((value, i) => ({
       color: colors[i], index: i, value, min: null, max: null,
     }));
@@ -115,7 +138,7 @@ export function classify(resolved, breaks, target) {
     bounds.push([edges[i], edges[i + 1]]);
   }
   if (breaks.open_high) bounds.push([edges[edges.length - 1], null]);
-  const colors = ramp(resolved.direction, bounds.length);
+  const colors = ramp(resolved.direction, bounds.length, breaks);
   const classes = bounds.map(([min, max], i) => ({
     color: colors[i], min, max, index: i,
   }));
@@ -124,10 +147,35 @@ export function classify(resolved, breaks, target) {
     classes,
     edges,
     scale: breaks.scale || null,
+    ramp: breaks.ramp || null,
+    centre: breaks.centre === undefined ? null : breaks.centre,
     column: resolved.column,
     target: target || null,
     targetIndex: targetClass(classes, target),
   };
+}
+
+/**
+ * The class a value falls in, or null.
+ *
+ * The same tests the paint expression applies, outer classes open, so a chart
+ * coloured by this and a map painted by fillExpression agree for every value.
+ */
+export function classOf(classification, value) {
+  if (!classification || value === null || value === undefined) return null;
+  const n = classification.classes.length;
+  if (classification.kind === 'categories') {
+    return classification.classes.find((cls) => cls.value === value) || null;
+  }
+  for (let i = 0; i < n; i += 1) {
+    const cls = classification.classes[i];
+    const aboveMin = i === 0 || cls.min === null || cls.min === undefined
+      || value >= cls.min;
+    const belowMax = i === n - 1 || cls.max === null || cls.max === undefined
+      || value < cls.max;
+    if (aboveMin && belowMax) return cls;
+  }
+  return null;
 }
 
 /**
