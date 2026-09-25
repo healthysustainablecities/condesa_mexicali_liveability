@@ -7,6 +7,7 @@
 // workshop presenter reaches can be linked to and reproduced exactly.
 
 import { DEFAULT_LANG, setLang } from './strings.js';
+import { decodeSettings, defaultSettings, encodeSettings } from './uli.js';
 
 export const OVERLAYS = [
   'choropleth', 'destinations', 'network', 'population', 'boundaries',
@@ -32,6 +33,10 @@ export const state = {
   selected: null,
   // the domain of a composite index whose components the profile lists
   focusDomain: null,
+  // The composite index's settings (see uli.js): the variant it is shown as,
+  // and any importance weights the reader imposed.  In the hash, so that a
+  // modified index can be linked to, and survives a reload.
+  uli: defaultSettings(),
   // one indicator, shared by both panes: the comparison is only meaningful
   // when both sides show the same quantity on the same colour scale
   shared: {
@@ -142,6 +147,9 @@ export function writeHash() {
   })) {
     if (value) params.set(key, value);
   }
+  for (const [key, value] of Object.entries(encodeSettings(state.uli))) {
+    params.set(key, value);
+  }
   params.set('p0', encodePane(state.panes[0]));
   if (state.compare) params.set('p1', encodePane(state.panes[1]));
   const hash = `#${params.toString()}`;
@@ -168,6 +176,7 @@ export function readHash() {
   })) {
     if (params.has(key)) s[field] = params.get(key);
   }
+  state.uli = decodeSettings(params);
   if (params.has('p0')) decodePane(params.get('p0'), state.panes[0]);
   if (params.has('p1')) decodePane(params.get('p1'), state.panes[1]);
 }

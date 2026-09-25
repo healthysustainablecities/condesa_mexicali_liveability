@@ -25,6 +25,9 @@ import { loadText, measureLabelFor } from './text.js';
 import { renderShowing } from './showing.js';
 import { applyStyle, contrastInk, Themes } from './theme.js';
 import { Tour } from './tour.js';
+import { activeIndex, defaultSettings } from './uli.js';
+import { renderUliSettings } from './ulisettings.js';
+import { printReport } from './report.js';
 import { Vocabulary } from './vocab.js';
 
 const $ = (id) => document.getElementById(id);
@@ -321,12 +324,14 @@ class App {
       this.openPanel('dictPanel');
     });
     $('modelBtn').addEventListener('click', () => this.openConceptualModel());
-    // the conceptual model is the one panel read at length, so it closes on
-    // Escape and returns focus to what opened it
+    $('reportBtn').addEventListener('click', () => this.printReport());
+    // the panels read at length close on Escape, and return focus to what
+    // opened them
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !$('modelPanel').hidden) {
-        this.closeConceptualModel();
-      }
+      if (event.key !== 'Escape') return;
+      const open = [...document.querySelectorAll('.overlay-panel')]
+        .find((panel) => !panel.hidden);
+      if (open) this.closePanel(open.id);
     });
     $('dictSearch').addEventListener('input', (e) =>
       this.dictionary.render(e.target.value));
@@ -336,7 +341,7 @@ class App {
     document.querySelectorAll('[data-close]').forEach((button) => {
       button.addEventListener('click', () => {
         const panel = button.closest('.overlay-panel, .drawer');
-        if (panel.id === 'modelPanel') this.closeConceptualModel();
+        if (panel.classList.contains('overlay-panel')) this.closePanel(panel.id);
         else panel.setAttribute('hidden', '');
       });
     });
@@ -551,7 +556,7 @@ class App {
       for (const pane of this.visiblePanes()) pane.applyStyle();
     }
 
-    this.resolved = this.vocab.resolve(state.shared);
+    this.resolved = this.applyIndexSettings(this.vocab.resolve(state.shared));
     // A banded measure falls back to its shortest distance when the selection
     // names none.  Record that silently, so the hash, the exported caption and
     // the outlined table column all agree with the map -- and so that changing
@@ -567,13 +572,20 @@ class App {
     });
     // one classification for both panes, straight from the export: see
     // choropleth.js on why nothing is derived here
+    // a variant's scores share its index's classes; a score computed from
+    // custom weights is classified as the score it stands in for, and painted
+    // from the expression that computes it
     this.classification = this.resolved
       ? classify(
         this.resolved,
-        this.vocab.breaksFor(this.resolved),
+        this.vocab.breaksFor(this.resolved)
+          || this.vocab.breaks[this.resolved.baseColumn] || null,
         this.vocab.targetFor(this.resolved),
       )
       : null;
+    if (this.classification && this.uli) {
+      this.classification.expression = this.uli.expression(this.resolved.column);
+    }
 
     this.renderControls();
     this.renderPaneControls();
@@ -618,6 +630,7 @@ class App {
     // the dataset has one
     $('modelBtn').hidden = !this.hasConceptualModel();
     if (!$('modelPanel').hidden) this.renderConceptualModel();
+    if (!$('uliPanel').hidden) this.renderUliSettings(panes, datasets, statsEntries);
     this.fill(
       $('basemapSel'),
       BASEMAP_KEYS.map((key) => [key, t(key === 'none' ? 'none' : key)]),
@@ -716,11 +729,14 @@ class App {
 
   /** Map one score of the composite index, and focus the domain it is in. */
   focusComponent(column, domain) {
+    // the variable selected is the published column: a variant's, or a score
+    // computed from custom weights, is what the settings map it to
+    const published = this.uli ? this.uli.inverse(column) : column;
     batch((s) => {
       s.focusDomain = domain;
       Object.assign(
         s.shared,
-        this.vocab.coerce({ ...s.shared, variable: column }, this.allColumns()),
+        this.vocab.coerce({ ...s.shared, variable: published }, this.allColumns()),
       );
       s.isolated = null;
     }, 'indicator');
@@ -783,27 +799,94 @@ class App {
   }
 
   openConceptualModel() {
-    this.modelOpener = document.activeElement;
     this.renderConceptualModel();
     this.openPanel('modelPanel');
     $('modelPanel').querySelector('.close').focus();
   }
 
-  closeConceptualModel() {
-    $('modelPanel').setAttribute('hidden', '');
-    // back to what opened it, or else to the footer's button, so focus is not
-    // left on the hidden panel's Close button
-    const opener = this.modelOpener;
-    const back = opener && opener !== document.body && document.body.contains(opener)
-      ? opener : $('modelBtn');
-    if (back && !back.hidden) back.focus();
-    this.modelOpener = null;
+  /**
+   * The composite index shown as the settings choose.
+   *
+   * The selection names the published column; the settings (uli.js) may show a
+   * variant's column in its place, or a score computed from custom weights.
+   * Everything downstream reads the resolved selection, so this is the one
+   * place the swap is made.
+   */
+  applyIndexSettings(resolved) {
+    this.uli = null;
+    if (!resolved || !resolved.composite) return resolved;
+    const active = activeIndex(resolved.composite, state.uli);
+    this.uli = active;
+    const column = active.remap(resolved.column);
+    // a computed score is available wherever the scores it is made of are
+    const computed = Boolean(active.expression(column));
+    const inputs = computed
+      ? active.structure.domains.flatMap((d) => d.indicators)
+        .filter((i) => i.column && !i.dropped && i.weight > 0)
+        .map((i) => i.column)
+      : [column];
+    return {
+      ...resolved,
+      composite: active.structure,
+      baseColumn: resolved.column,
+      column,
+      columns: inputs,
+    };
+  }
+
+  /** Open the composite index's settings, beside a larger profile. */
+  openUliSettings() {
+    this.openPanel('uliPanel');
+    const panes = activePanes();
+    const datasets = panes.map((pane) => this.datasets.get(pane.dataset));
+    const statsEntries = panes.map((pane, i) =>
+      (datasets[i] ? datasets[i].stats[pane.scale] : null));
+    this.renderUliSettings(panes, datasets, statsEntries);
+    $('uliPanel').querySelector('.close').focus();
+  }
+
+  renderUliSettings(panes, datasets, statsEntries) {
+    renderUliSettings($('uliBody'), this, panes, datasets, statsEntries);
+  }
+
+  /** Change the composite index's settings: a variant, or weights. */
+  setUliSettings(mutator) {
+    update((s) => {
+      const next = JSON.parse(JSON.stringify(s.uli || defaultSettings()));
+      mutator(next);
+      s.uli = next;
+    }, 'uli');
+  }
+
+  resetUliSettings() {
+    update((s) => { s.uli = defaultSettings(); }, 'uli');
   }
 
   openPanel(id) {
+    // what opened a panel gets focus back when it closes
+    const opener = document.activeElement;
     document.querySelectorAll('.overlay-panel').forEach((panel) =>
       panel.setAttribute('hidden', ''));
     $(id).removeAttribute('hidden');
+    this.panelOpener = opener;
+  }
+
+  closePanel(id) {
+    $(id).setAttribute('hidden', '');
+    // back to what opened it, or else to the footer's button, so focus is not
+    // left on the hidden panel's Close button
+    const opener = this.panelOpener;
+    const fallback = { modelPanel: 'modelBtn', dictPanel: 'dictBtn' }[id];
+    const back = opener && opener !== document.body && document.body.contains(opener)
+      ? opener : (fallback ? $(fallback) : null);
+    if (back && !back.hidden) back.focus();
+    this.panelOpener = null;
+  }
+
+  /** The liveability report, printed (and so saved) as a PDF. */
+  async printReport() {
+    const message = await printReport(this);
+    if (message) this.toast(message);
   }
 
   /** The collapse control's tooltip follows what it will do next. */

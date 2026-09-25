@@ -13,9 +13,16 @@
 //
 // The shares are the exporter's population-weighted `class_shares` for the
 // scale each pane is showing.
+//
+// An access measure judged at several distances is drawn differently: one bar
+// per distance band, the share of each region's population with access within
+// it.  How access grows with distance is what such a measure is about, and the
+// class shares at one band showed only a slice of it -- mostly empty classes
+// either side of a spike.  The legend beneath is then the map's key alone.
 
+import { classOf } from './choropleth.js';
 import { relationSymbol } from './legend.js';
-import { state } from './state.js';
+import { state, update } from './state.js';
 import { label, number, t } from './strings.js';
 
 const PLOT_H = 56; // px, the drawing area's height
@@ -88,6 +95,11 @@ export function renderDistribution(
     element.innerHTML = '';
     return;
   }
+  if (resolved.bands.length > 1
+      && ['access', 'beyond'].includes(resolved.measureKey)) {
+    renderBands(element, resolved, classification, panes, datasets);
+    return;
+  }
   const names = panes.map((pane, i) => regionName(datasets[i], pane));
   const classes = classification.classes;
 
@@ -144,4 +156,68 @@ export function renderDistribution(
     </div>
     ${regionKey(names)}
     ${targetNote(classification, perRegion, names)}`;
+}
+
+/**
+ * The share of each region's population with access, band by band.
+ *
+ * The regions' own population-weighted figures, as the results table reports
+ * them.  Bars take the colour the map gives that value, so a band reads the
+ * same here as there; the band the map is drawn from is outlined, and clicking
+ * another maps it instead.
+ */
+function renderBands(element, resolved, classification, panes, datasets) {
+  const names = panes.map((pane, i) => regionName(datasets[i], pane));
+  const perRegion = panes.map((pane, i) => {
+    const values = (datasets[i].manifest.region_values || {})[pane.region] || {};
+    return resolved.columns.map((column) => {
+      const value = values[column];
+      return value === undefined || value === null ? null : Number(value);
+    });
+  });
+  if (perRegion.every((row) => row.every((v) => v === null))) {
+    element.innerHTML = '';
+    return;
+  }
+  const groups = resolved.bands.map((band, b) => {
+    const bars = perRegion.map((row, r) => {
+      const value = row[b];
+      const cls = classOf(classification, value);
+      const height = Math.max(1, ((value || 0) / 100) * PLOT_H);
+      return `<div class="histo-bar"
+           style="height:${height.toFixed(1)}px;background:${
+  cls ? cls.color : '#c9c4bd'};${r > 0 ? 'opacity:.55' : ''}"
+           title="${names[r]} · ${band} m · ${
+  value === null ? '–' : `${number(value, 1)}%`}"></div>`;
+    }).join('');
+    const chosen = String(band) === String(resolved.distance);
+    return `<div class="histo-group band${chosen ? ' chosen' : ''}"
+      data-band="${band}" role="button" tabindex="0">${bars}</div>`;
+  }).join('');
+  const values = perRegion[0].map((v) => (v === null ? '–' : `${number(v, 0)}%`));
+  element.innerHTML = `
+    <div class="section-title" title="${t('bandChartHelp')}">${
+  t('bandChartTitle')}</div>
+    <div class="histo">
+      <div class="histo-y" style="height:${PLOT_H}px">
+        <span>100%</span><span>50%</span><span>0%</span>
+      </div>
+      <div class="histo-plot" style="height:${PLOT_H}px">
+        <div class="histo-bars">${groups}</div>
+      </div>
+    </div>
+    <div class="band-axis">${resolved.bands.map((band, b) =>
+    `<span${String(band) === String(resolved.distance) ? ' class="chosen"' : ''}>${
+      band} m<small>${values[b]}</small></span>`).join('')}</div>
+    ${regionKey(names)}`;
+  element.querySelectorAll('.histo-group.band').forEach((node) => {
+    const pick = () => update((st) => {
+      st.shared.distance = node.dataset.band;
+      st.isolated = null;
+    }, 'indicator');
+    node.addEventListener('click', pick);
+    node.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') pick();
+    });
+  });
 }

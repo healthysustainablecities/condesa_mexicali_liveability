@@ -95,17 +95,15 @@ function drawLegend(ctx, x, y, width, resolved, classification) {
 }
 
 /**
- * Compose and download the current view.
+ * Compose the current view -- maps, legend, scale bars, caption and sources --
+ * onto one canvas.  Returns null where there is nothing to compose.
  *
- * Returns null on success, or a message when the browser refuses to read the
- * canvas back.  That happens when a basemap's tiles are served without CORS
- * headers, which taints the drawing buffer; switching basemap is the fix, so
- * the message says so rather than failing silently.
+ * Shared by the image export and the liveability report (report.js).
  */
-export async function exportImage({ panes, datasets, resolved, classification,
-  vocab, filename }) {
+export async function composeView({ panes, datasets, resolved, classification,
+  vocab }) {
   const maps = panes.map((pane) => pane.map).filter(Boolean);
-  if (!maps.length || !resolved) return 'nothing to export';
+  if (!maps.length || !resolved) return null;
 
   // preserveDrawingBuffer keeps the buffer from being cleared, but its contents
   // are only reliably readable straight after a frame — reading from an idle
@@ -194,7 +192,23 @@ export async function exportImage({ panes, datasets, resolved, classification,
     ctx.fillText(line, MARGIN, cursor);
     cursor += 14;
   }
+  return out;
+}
 
+/**
+ * Compose and download the current view.
+ *
+ * Returns null on success, or a message when the browser refuses to read the
+ * canvas back.  That happens when a basemap's tiles are served without CORS
+ * headers, which taints the drawing buffer; switching basemap is the fix, so
+ * the message says so rather than failing silently.
+ */
+export async function exportImage({ panes, datasets, resolved, classification,
+  vocab, filename }) {
+  const out = await composeView({
+    panes, datasets, resolved, classification, vocab,
+  });
+  if (!out) return 'nothing to export';
   try {
     const blob = await new Promise((resolve, reject) => {
       out.toBlob((b) => (b ? resolve(b) : reject(new Error('empty'))), 'image/png');

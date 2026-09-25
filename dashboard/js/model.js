@@ -27,7 +27,7 @@ function distanceText(metres) {
 }
 
 /** Placeholders for the methods text, from the index's structure. */
-function methodParts(structure) {
+export function methodParts(structure) {
   const indicators = structure.domains.flatMap((d) => d.indicators);
   const thresholds = [...new Set(indicators
     .map((i) => Number(i.soft_threshold))
@@ -46,7 +46,26 @@ function methodParts(structure) {
     n: indicators.length,
     thresholds: thresholds.join(', '),
     k: slopes.map((k) => number(k, k % 1 ? 1 : 0)).join(', '),
+    attenuation: number(Number(structure.attenuation) || 0.5, 1),
   };
+}
+
+/**
+ * Walkability, its heat variants and the settings, for an index with
+ * variants; its thermal comfort caveats where any variant uses UTCI.
+ */
+export function variantParagraphs(structure, parts) {
+  const variants = structure.variants || [];
+  if (!variants.length) return [];
+  const paragraphs = [
+    say('methods', 'walkability', parts),
+    say('methods', 'variants', parts),
+    say('methods', 'weights', parts),
+  ];
+  if (variants.some((v) => (v.heat || []).includes('t'))) {
+    paragraphs.push(say('methods', 'utci', parts));
+  }
+  return paragraphs.filter(Boolean);
 }
 
 // The formulas, as HTML: identical in every language
@@ -101,13 +120,37 @@ const REFERENCES = [
       + 'Italiana di Economia Demografia e Statistica 76(4): 17–26.',
   },
   {
+    text: 'Frank LD, Sallis JF, Saelens BE, Leary L, Cain K, Conway TL, Hess PM '
+      + '(2010). The development of a walkability index: application to the '
+      + 'Neighborhood Quality of Life Study. British Journal of Sports '
+      + 'Medicine 44(13): 924–933.',
+    doi: '10.1136/bjsm.2009.058701',
+    when: (structure) => Boolean((structure.variants || []).length),
+  },
+  {
+    text: 'Wang Y, He B-J, Kang C, et al. (2022). Assessment of walkability '
+      + 'and walkable routes of a 15-min city for heat adaptation: '
+      + 'development of a dynamic attenuation model of heat stress. Frontiers '
+      + 'in Public Health 10: 1011391.',
+    doi: '10.3389/fpubh.2022.1011391',
+    when: (structure) => Boolean((structure.variants || []).length),
+  },
+  {
+    text: 'Bröde P, Fiala D, Błażejczyk K, et al. (2012). Deriving the '
+      + 'operational procedure for the Universal Thermal Climate Index (UTCI). '
+      + 'International Journal of Biometeorology 56(3): 481–494.',
+    doi: '10.1007/s00484-011-0454-1',
+    when: (structure) => (structure.variants || [])
+      .some((v) => (v.heat || []).includes('t')),
+  },
+  {
     text: 'OECD, JRC (2008). Handbook on Constructing Composite Indicators: '
       + 'Methodology and User Guide. Paris: OECD Publishing.',
     doi: '10.1787/9789264043466-en',
   },
 ];
 
-function references(structure) {
+export function references(structure) {
   const items = REFERENCES
     .filter((r) => !r.when || r.when(structure))
     .map((r) => `<li>${attr(r.text)}${r.doi ? ` <a href="https://doi.org/${
@@ -173,6 +216,7 @@ export function renderModel(element, dataset, structure) {
           <div class="formula">${formulaAggregate(structure.phenomenon)}</div></li>
       </ol>
       <p>${attr(say('methods', 'scale', parts))}</p>
+      ${variantParagraphs(structure, parts).map((p) => `<p>${attr(p)}</p>`).join('')}
       <p>${attr(say('methods', 'reading', parts))}</p>
       <p class="muted">${attr(say('methods', 'provisional', parts))}</p>
       ${vocabulary(structure)}

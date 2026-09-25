@@ -36,7 +36,12 @@ def read(path):
 
 js_files = sorted(f for f in os.listdir(JS) if f.endswith('.js'))
 html = read(os.path.join(BASE, 'index.html'))
-css = read(os.path.join(BASE, 'css', 'app.css'))
+# every stylesheet the page links: the print sheet is held to the same rules
+css = '\n'.join(
+    read(os.path.join(BASE, 'css', name))
+    for name in ('app.css', 'print.css')
+    if os.path.exists(os.path.join(BASE, 'css', name))
+)
 sources = {f: read(os.path.join(JS, f)) for f in js_files}
 
 # ---- syntax ---------------------------------------------------------------

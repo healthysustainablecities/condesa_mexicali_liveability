@@ -70,7 +70,8 @@ export const NO_DATA = '#c9c4bd';
 export const DIM = '#d9d5d0';
 export const LTS_COLORS = { 1: '#1a9850', 2: '#a6d96a', 3: '#fdae61', 4: '#d73027' };
 
-const SENTINEL = -999999;
+// the value a missing one is drawn as: no data
+export const SENTINEL = -999999;
 
 function ramp(direction, n, breaks) {
   // A diverging ramp where the exporter asks for one. A composite index's
@@ -204,9 +205,19 @@ function combine(tests) {
   return tests.length === 1 ? tests[0] : ['all', ...tests];
 }
 
+/**
+ * The value an area is classified by: its column, or -- for a score computed in
+ * the browser from custom importance weights (uli.js) -- the expression that
+ * computes it from the columns it is made of.
+ */
+function valueExpression(classification) {
+  return ['coalesce',
+    classification.expression || ['get', classification.column], SENTINEL];
+}
+
 /** Fill colour for the whole layer, before any legend isolation. */
 export function fillExpression(classification) {
-  const value = ['coalesce', ['get', classification.column], SENTINEL];
+  const value = valueExpression(classification);
   const expression = ['case', ['==', value, SENTINEL], NO_DATA];
   if (classification.kind === 'categories') {
     classification.classes.forEach((cls) => {
@@ -226,7 +237,7 @@ export function fillExpression(classification) {
 export function classFilter(classification, index) {
   const cls = classification.classes[index];
   if (!cls) return ['boolean', false];
-  const value = ['coalesce', ['get', classification.column], SENTINEL];
+  const value = valueExpression(classification);
   if (classification.kind === 'categories') {
     return ['==', value, cls.value];
   }

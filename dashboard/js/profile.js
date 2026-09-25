@@ -29,6 +29,7 @@
 import { classify, classOf, NO_DATA } from './choropleth.js';
 import { state } from './state.js';
 import { integer, label, number, t } from './strings.js';
+import { modificationNote } from './uli.js';
 
 const W = 470; // viewBox width: room for a domain label either side
 const H = 340; // viewBox height
@@ -46,6 +47,14 @@ const WRAP = 13; // characters per line of a domain label
 const LINE = 10; // domain label line height
 // the core's blue, where the index gives no colour of its own
 const CORE = '#4E8EF7';
+// the narrowest a petal is drawn, as a share of an ordinary one: an
+// indicator weighted zero is set aside, and shown so rather than vanishing
+const MIN_PETAL = 0.2;
+// a cog, for the index's settings (24 x 24)
+const COG = 'M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1'
+  + 'L15 3h-4l-.4 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2'
+  + 'l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1L11 21h4l.4-2.9a7.6 7.6 0 0 0'
+  + ' 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -202,6 +211,7 @@ function sectorsOf(structure, available) {
       key: d.name || structure.name,
       label: d.name ? d.label : structure.label,
       column: d.name && has(d.column) ? d.column : null,
+      weight: d.weight === undefined || d.weight === null ? 1 : Number(d.weight),
       colour: colourOf(d.colour),
       indicators: d.indicators.filter((i) => has(i.column) || i.dropped),
     }))
@@ -239,6 +249,19 @@ function subjectsFor(panes, datasets) {
     };
   }
   return { subject: regions[0], references: regions.slice(1) };
+}
+
+/**
+ * The subject and references a profile of these panes describes, with any
+ * scores computed from custom weights added (used by the report).
+ */
+export function profileSubjects(app, panes, datasets) {
+  const found = subjectsFor(panes, datasets);
+  const enrich = (app.uli && app.uli.values) || ((values) => values);
+  for (const who of [found.subject, ...found.references]) {
+    who.values = enrich(who.values);
+  }
+  return found;
 }
 
 /** One row of the strip: mean level − penalty = index, drawn and stated. */
@@ -351,7 +374,9 @@ function domainList(sectors, focus, subject, references, scale, mapped, lenses, 
  * `panes` are the pane configurations on screen, with `datasets` and
  * `statsEntries` in the same order, as for the other sidebar charts.
  */
-export function renderProfile(element, app, panes, datasets, statsEntries) {
+export function renderProfile(
+  element, app, panes, datasets, statsEntries, options = {},
+) {
   const resolved = app.resolved;
   const structure = resolved && resolved.composite;
   if (!structure || !panes.length || !datasets[0]) {
@@ -389,6 +414,9 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
     return;
   }
   const { subject, references } = subjectsFor(panes, datasets);
+  // scores computed from custom importance weights, beside the published ones
+  const enrich = (app.uli && app.uli.values) || ((values) => values);
+  for (const who of [subject, ...references]) who.values = enrich(who.values);
   const valueOf = (who, column) => numeric((who.values || {})[column]);
   const spread = ((statsEntries[subject.pane || 0] || {}).columns) || {};
   const focus = sectors.find((s) => s.key === state.focusDomain) || null;
@@ -417,10 +445,22 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
   const beyond = (v) => v !== null && (v < lo || v > hi);
 
   // each indicator an equal share of the circle, with a wider gap between
-  // domains; the first domain is centred at the top, as on the figure
-  const count = sectors.reduce((n, s) => n + s.petals.length, 0);
-  const share = (2 * Math.PI - sectors.length * DOMAIN_GAP) / count;
-  const firstSpan = sectors[0].petals.length * share;
+  // domains; the first domain is centred at the top, as on the figure.  With
+  // importance weights of the reader's own, each petal's share follows its
+  // weight (its domain's times its own), so the chart shows what counts for
+  // how much
+  const weighted = Boolean(structure.custom);
+  const petalWeight = (sector, indicator) => {
+    if (!weighted) return 1;
+    const w = sector.weight * (Number(indicator.weight) || 0);
+    return Math.max(w, MIN_PETAL);
+  };
+  const totalWeight = sectors.reduce((n, sector) => n + sector.petals
+    .reduce((m, i) => m + petalWeight(sector, i), 0), 0);
+  const share = (2 * Math.PI - sectors.length * DOMAIN_GAP) / totalWeight;
+  const spanOf = (sector) => sector.petals
+    .reduce((m, i) => m + petalWeight(sector, i), 0) * share;
+  const firstSpan = spanOf(sectors[0]);
   let angle = -Math.PI / 2 - firstSpan / 2;
 
   const svg = [];
@@ -433,7 +473,8 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
 
   sectors.forEach((sector) => {
     const s0 = angle;
-    const s1 = angle + sector.petals.length * share;
+    const s1 = angle + spanOf(sector);
+    let at = s0;
     const middle = (s0 + s1) / 2;
     const colour = sector.colour;
     // colours go in style, where CSS variables work and the petal rule's
@@ -441,10 +482,14 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
     const stroke = colour ? colour.stroke : '#7a7269';
     const focused = Boolean(focus && focus.key === sector.key);
 
-    sector.petals.forEach((indicator, j) => {
-      const a0 = s0 + j * share + PETAL_GAP / 2;
-      const a1 = s0 + (j + 1) * share - PETAL_GAP / 2;
+    sector.petals.forEach((indicator) => {
+      const span = petalWeight(sector, indicator) * share;
+      const a0 = at + PETAL_GAP / 2;
+      const a1 = at + span - PETAL_GAP / 2;
+      at += span;
       const mid = (a0 + a1) / 2;
+      const setAside = weighted
+        && !(sector.weight * (Number(indicator.weight) || 0) > 0);
       const value = valueOf(subject, indicator.column);
       const name = label(indicator.label, indicator.id);
       const tip = [`${name}: ${scoreText(value, reference)}`]
@@ -453,7 +498,8 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
         .join(' · ');
       const fill = colour ? colour.fill : classColour(value);
       svg.push(`<path class="petal${mapped === indicator.column ? ' focus' : ''}${
-        value !== null && value < reference ? ' below' : ''}" d="${wedge(
+        value !== null && value < reference ? ' below' : ''}${
+        setAside ? ' set-aside' : ''}" d="${wedge(
         radius(reference), radius(value === null ? reference : value), a0, a1,
       )}" style="fill:${fill};stroke:${stroke}" data-key="${attr(sector.key)}"
         data-column="${attr(indicator.column)}"><title>${attr(tip)}</title></path>`);
@@ -478,7 +524,7 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
         const v = valueOf(ref, indicator.column);
         if (v === null) return;
         const offset = references.length > 1
-          ? (ref.pane ? share * 0.18 : -share * 0.18) : 0;
+          ? (ref.pane ? span * 0.18 : -span * 0.18) : 0;
         const [x, y] = xy(radius(v), mid + offset);
         svg.push(`<circle class="marker${ref.pane ? ' compare' : ''}" cx="${
           x.toFixed(2)}" cy="${y.toFixed(2)}" r="2.8"><title>${
@@ -562,6 +608,20 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
     : '';
   const who = subject.kind === 'area'
     ? `${t('profileArea')}: ${subject.name}` : subject.name;
+  // the settings, from a cog in the corner; and, beneath the chart, what they
+  // have changed, for as long as anything is
+  const note = options.inModal ? ''
+    : modificationNote(app.uli ? app.uli.base : structure, state.uli);
+  const cog = options.inModal ? ''
+    : `<button class="profile-cog" data-action="settings" title="${
+      attr(t('uliSettingsHelp'))}" aria-label="${attr(t('uliSettings'))}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${COG}"></path></svg>
+    </button>`;
+  const modified = note ? `<div class="uli-note">
+      <span><strong>${attr(t('uliModified'))}</strong> ${attr(note)}${
+  structure.custom ? ` · <em>${attr(t('uliExploratory'))}</em>` : ''}</span>
+      <button class="profile-chip" data-action="reset">${attr(t('uliReset'))}</button>
+    </div>` : '';
   element.innerHTML = `
     <div class="section-title">${attr(label(structure.label, t('profileTitle')))}</div>
     <div class="profile-head">
@@ -583,7 +643,7 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
     <ul class="profile-list">${domainList(
     sectors, focus, subject, references, scale, mapped, structure.lenses,
     { colour: classColour },
-  )}</ul>`;
+  )}</ul>${modified}${cog}`;
 
   element.querySelectorAll('[data-column]').forEach((node) => {
     node.addEventListener('click', () => {
@@ -613,4 +673,8 @@ export function renderProfile(element, app, panes, datasets, statsEntries) {
   if (button) button.addEventListener('click', () => app.clearSelection());
   const open = element.querySelector('[data-action="model"]');
   if (open) open.addEventListener('click', () => app.openConceptualModel());
+  const settings = element.querySelector('[data-action="settings"]');
+  if (settings) settings.addEventListener('click', () => app.openUliSettings());
+  const reset = element.querySelector('[data-action="reset"]');
+  if (reset) reset.addEventListener('click', () => app.resetUliSettings());
 }

@@ -38,7 +38,7 @@ function steps(app) {
     {
       element: '#profile',
       title: {
-        es: 'El Índice de Habitabilidad Urbana',
+        es: 'El Índice de entornos vivibles',
         en: 'The Urban Liveability Index',
       },
       text: {
@@ -50,7 +50,9 @@ function steps(app) {
           + 'componentes, o en un área del mapa para ver su propio perfil. La '
           + 'franja inferior muestra por qué el índice no es un simple '
           + 'promedio: se resta una penalización cuando los dominios están '
-          + 'desequilibrados.',
+          + 'desequilibrados. El engranaje de la esquina abre la configuración: '
+          + 'la caminabilidad ajustada por el calor, y la importancia que usted '
+          + 'da a cada dominio.',
         en: 'The explorer opens on the (provisional) composite index. Each '
           + 'petal is an indicator, in its domain’s colour: it grows outward '
           + 'from the dashed ring (0, the reference) where the indicator does '
@@ -58,7 +60,9 @@ function steps(app) {
           + 'a petal to map it, a domain to see its components, or an area on '
           + 'the map to see its own profile. The strip below shows why the '
           + 'index is not a simple average: a penalty is subtracted when the '
-          + 'domains are out of balance.',
+          + 'domains are out of balance. The cog in the corner opens the '
+          + 'settings: walkability adjusted for heat, and the importance you '
+          + 'give each domain.',
       },
       before: () => app.showFeatured(),
     },

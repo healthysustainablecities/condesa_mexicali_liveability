@@ -677,6 +677,112 @@ section('composite indices carry their structure, and share one scale');
 }
 
 // ---------------------------------------------------------------------------
+section('the index settings: variants read exported scores, weights recompute');
+{
+  const {
+    activeIndex, ampi, defaultSettings, variantFor, variantOptions,
+  } = await module_('uli.js');
+  const composites = indicators.families.filter((f) => f.composite);
+  for (const family of composites) {
+    const c = family.composite;
+    const variants = c.variants || [];
+    if (!variants.length) {
+      console.log(`  ${family.id}: no variants`);
+      continue;
+    }
+    // the published index is the first variant, and the defaults show it
+    check(variants[0].name === c.name, `${family.id}: the base index comes first`);
+    const identity = activeIndex(c, defaultSettings());
+    check(identity.remap(c.columns.index) === c.columns.index,
+      `${family.id}: default settings show the published index`);
+    const shared = JSON.stringify(indicators.breaks[c.columns.index] || null);
+    for (const variant of variants) {
+      for (const column of Object.values(variant.columns)
+        .concat(Object.values(variant.domains || {}),
+          Object.values(variant.indicators || {}))) {
+        check(everywhere.has(column), `${family.id}: ${column} is exported`);
+      }
+      if (!variant.columns.penalty) continue;
+      check(JSON.stringify(indicators.breaks[variant.columns.index] || null) === shared,
+        `${family.id}: ${variant.name} shares the index's classes`);
+      for (const key of Object.keys(manifest.regions)) {
+        const values = (manifest.region_values || {})[key] || {};
+        check(variant.columns.index in values,
+          `${family.id}: region_values.${key} has ${variant.columns.index}`);
+      }
+      // every variant is reachable from the settings, and resolves to itself
+      const settings = {
+        ...defaultSettings(),
+        walk: variant.walk,
+        heat: (variant.heat || []).join(''),
+        form: variant.form || 'additive',
+      };
+      check((variantFor(c, settings) || {}).name === variant.name,
+        `${family.id}: the settings reach ${variant.name}`);
+      check(activeIndex(c, settings).remap(c.columns.index) === variant.columns.index,
+        `${family.id}: ${variant.name} is mapped from its own index column`);
+    }
+    const options = variantOptions(c);
+    console.log(`  ${family.id}: ${variants.length} variants; walk ${
+      options.walks.join('/')} m; heat ${options.heats.map((h) => h || 'none').join('/')}; `
+      + `forms ${options.forms.join('/')}`);
+
+    // custom weights: a domain of one indicator is that indicator's score
+    // exactly, and the index recomputed at equal weights is near the published
+    // one (it is the index of averages, not the average of indices)
+    const firstDomain = c.domains.find((d) => d.name);
+    const weights = { ...defaultSettings(),
+      domains: { [firstDomain.name]: 2 } };
+    const custom = activeIndex(c, weights);
+    check(custom.custom && custom.expression(custom.remap(c.columns.index)),
+      `${family.id}: custom weights give a paint expression for the index`);
+    for (const [key, values] of Object.entries(manifest.region_values || {})) {
+      const scored = custom.values(values);
+      for (const domain of custom.structure.domains) {
+        const inputs = domain.indicators.filter((i) => i.column && !i.dropped);
+        if (inputs.length === 1 && domain.column && values[inputs[0].column] !== undefined) {
+          check(Math.abs(scored[domain.column] - values[inputs[0].column]) < 1e-9,
+            `${family.id}: ${key} ${domain.name} is its one indicator's score`);
+        }
+      }
+      const equal = ampi(
+        c.domains.filter((d) => d.column).map((d) => Number(values[d.column])),
+        c.domains.filter((d) => d.column).map(() => 1),
+      );
+      const published = Number(values[c.columns.index]);
+      if (equal && Number.isFinite(published)) {
+        check(Math.abs(equal.index - published) < 5,
+          `${family.id}: ${key} index of domain averages (${equal.index.toFixed(2)}) `
+          + `near the published (${published.toFixed(2)})`);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('access by distance: every band has a region figure');
+{
+  let banded = 0;
+  for (const family of indicators.families) {
+    const walk = ((family.measures.access || {}).networks || {}).walk;
+    if (!walk || typeof walk === 'string' || Object.keys(walk).length < 2) continue;
+    banded += 1;
+    for (const [band, column] of Object.entries(walk)) {
+      for (const key of Object.keys(manifest.regions)) {
+        const values = (manifest.region_values || {})[key] || {};
+        if (!everywhere.has(column)) continue;
+        check(column in values,
+          `${family.id}: region_values.${key} has the ${band} m band (${column})`);
+      }
+    }
+  }
+  const bands = [...new Set(indicators.families.flatMap((f) =>
+    Object.keys(((f.measures.access || {}).networks || {}).walk || {})))]
+    .sort((a, b) => a - b);
+  console.log(`  ${banded} walking access families; bands ${bands.join(' / ')} m`);
+}
+
+// ---------------------------------------------------------------------------
 section('each language\'s conceptual model is present');
 {
   const models = manifest.conceptual_models || {};

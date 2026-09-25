@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Habitabilidad Mexicali-Condesa</title>
+<title>Entornos vivibles Mexicali-Condesa</title>
 <!--
   Libraries are vendored rather than loaded from a CDN: this is meant to run in
   a workshop room whose wifi may not be there.  Run build/fetch-vendor.sh once
@@ -17,6 +17,8 @@
 -->
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="css/app.css">
+<!-- the liveability report, which only printing shows (js/report.js) -->
+<link rel="stylesheet" href="css/print.css" media="print">
 </head>
 <body>
 
@@ -58,7 +60,7 @@
   <!-- Floats over the first pane; scrolls itself; collapses in three steps. -->
   <aside id="controls">
     <div id="appHead">
-      <strong id="appTitle">Habitabilidad Mexicali-Condesa</strong>
+      <strong id="appTitle">Entornos vivibles Mexicali-Condesa</strong>
       <button class="btn icon" id="settingsBtn"
               title="Ajustes: capas, mapa base y vistas"
               aria-label="Ajustes">⚙</button>
@@ -130,6 +132,8 @@
             title="Todas las variables, con sus unidades y definiciones">Diccionario de datos</button>
     <button class="btn" id="exportBtn" data-s="exportImage"
             title="Descarga la vista actual como imagen, con leyenda y fuentes">Exportar imagen</button>
+    <button class="btn" id="reportBtn" data-s="report"
+            title="Un informe de entornos vivibles con lo que se muestra, para guardar como PDF">Informe PDF</button>
     <select id="langSel" class="lang" title="Idioma / Language">
       <option value="es">Español</option>
       <option value="en">English</option>
@@ -160,6 +164,17 @@
   <div class="panel-body" id="modelBody"></div>
 </div>
 
+<!-- The composite index's settings: the variant of walkability it
+     includes, and importance weights (js/ulisettings.js). -->
+<div class="overlay-panel wide" id="uliPanel" role="dialog"
+     aria-modal="true" aria-label="Configuración del índice" hidden>
+  <button class="close" data-close data-s="close">Cerrar</button>
+  <div class="panel-body">
+    <h2 class="uli-title" data-s="uliSettings">Configuración del índice</h2>
+    <div id="uliBody"></div>
+  </div>
+</div>
+
 <div class="overlay-panel wide" id="dictPanel" hidden>
   <button class="close" data-close data-s="close">Cerrar</button>
   <div class="panel-body">
@@ -183,6 +198,9 @@
 </div>
 
 <div id="toast" hidden></div>
+
+<!-- The liveability report: built when asked for, shown only in print. -->
+<div id="report" hidden></div>
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/pmtiles.js"></script>

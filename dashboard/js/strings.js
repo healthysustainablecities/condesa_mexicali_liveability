@@ -241,6 +241,116 @@ const S = {
   impact: { es: 'Impacto', en: 'Impact' },
   areaKm2: { es: 'Área (km²)', en: 'Area (km²)' },
   populationEstimate: { es: 'Población estimada', en: 'Estimated population' },
+
+  // the composite index's settings (the cog on the profile)
+  uliSettings: { es: 'Configuración del índice', en: 'Index settings' },
+  uliSettingsHelp: {
+    es: 'Elegir la versión de la caminabilidad incluida y la importancia relativa de cada dominio',
+    en: 'Choose the version of walkability included and the relative importance of each domain',
+  },
+  uliModified: { es: 'Índice modificado:', en: 'Index modified:' },
+  uliExploratory: { es: 'exploratorio', en: 'exploratory' },
+  uliReset: { es: 'Restablecer', en: 'Reset' },
+  uliCustomWeights: { es: 'pesos personalizados', en: 'custom weights' },
+  uliShowing: { es: 'Se muestra', en: 'Showing' },
+  uliExact: { es: 'Puntuaciones publicadas', en: 'Published scores' },
+  uliExactHelp: {
+    es: 'Calculadas en cada punto de muestra y promediadas, como en el análisis.',
+    en: 'Calculated at each sample point and averaged, as in the analysis.',
+  },
+  uliExploratoryHelp: {
+    es: 'Con pesos personalizados, el índice se recalcula en el navegador a partir de las puntuaciones promedio de cada área: es una aproximación exploratoria, que no coincide exactamente con las puntuaciones publicadas.',
+    en: 'With custom weights, the index is recalculated in the browser from each area’s average scores: an exploratory approximation, which does not exactly match the published scores.',
+  },
+  uliWalkTitle: { es: 'Caminabilidad incluida', en: 'Walkability included' },
+  uliWalkIntro: {
+    es: 'La caminabilidad combina el acceso a la vida diaria, la densidad de población y la de intersecciones. Puede incluirse tal cual o ajustada por el calor.',
+    en: 'Walkability combines access to daily living, population density and intersection density. It can be included as it is, or adjusted for heat.',
+  },
+  uliWalkDistance: { es: 'Distancia de la vida diaria', en: 'Daily living distance' },
+  uliWalkDistanceHelp: {
+    es: 'Acceso a alimentos frescos, tienda de conveniencia y transporte público dentro de {d}.',
+    en: 'Access to fresh food, a convenience store and public transport within {d}.',
+  },
+  uliHeat: { es: 'Ajuste por calor', en: 'Heat adjustment' },
+  uliHeatNone: { es: 'Sin ajuste', en: 'No adjustment' },
+  uliHeatNoneHelp: {
+    es: 'La caminabilidad tal cual.',
+    en: 'Walkability as it is.',
+  },
+  uliHeatG: { es: 'Vulnerabilidad al calor (GUHVI)', en: 'Heat vulnerability (GUHVI)' },
+  uliHeatGHelp: {
+    es: 'Exposición, sensibilidad y capacidad de adaptación al calor, en una cuadrícula de 1 km. También forma parte del entorno medioambiental, así que cuenta dos veces.',
+    en: 'Exposure, sensitivity and adaptive capacity to heat, on a 1 km grid. It is also part of the ambient environment, so it counts twice.',
+  },
+  uliHeatT: { es: 'Confort térmico (UTCI)', en: 'Thermal comfort (UTCI)' },
+  uliHeatTHelp: {
+    es: 'UTCI diurno sobre superficies peatonales el día más caluroso de 2023: sol y sombra al caminar.',
+    en: 'Daytime UTCI over pedestrian surfaces on the hottest day of 2023: sun and shade while walking.',
+  },
+  uliHeatGT: { es: 'Ambos', en: 'Both' },
+  uliHeatGTHelp: {
+    es: 'Vulnerabilidad al calor y confort térmico a la vez.',
+    en: 'Heat vulnerability and thermal comfort together.',
+  },
+  uliForm: { es: 'Cómo se tiene en cuenta', en: 'How it is accounted for' },
+  uliFormAdditive: { es: 'Aditiva', en: 'Additive' },
+  uliFormAdditiveHelp: {
+    es: 'El calor es un componente más de la caminabilidad: una calle más fresca compensa tener menos destinos.',
+    en: 'Heat is one more component of walkability: a cooler street makes up for fewer destinations.',
+  },
+  uliFormMultiplicative: { es: 'Atenuación', en: 'Attenuation' },
+  uliFormMultiplicativeHelp: {
+    es: 'El calor reduce la caminabilidad, hasta la mitad en los lugares más calurosos: la sombra no compensa no tener a dónde caminar.',
+    en: 'Heat reduces walkability, by up to half in the hottest places: shade cannot make up for having nowhere to walk to.',
+  },
+  uliWeightsTitle: { es: 'Importancia relativa', en: 'Relative importance' },
+  uliWeightsIntro: {
+    es: 'Por diseño, el índice premia un perfil equilibrado: todos los dominios pesan lo mismo. Aquí puede dar más o menos peso a lo que le importa. Esto expresa una preferencia personal, no la evidencia de salud pública, y las puntuaciones resultantes son exploratorias.',
+    en: 'By design, the index rewards a balanced profile: every domain carries the same weight. Here you can give more or less weight to what matters to you. This expresses personal preference, not public health evidence, and the resulting scores are exploratory.',
+  },
+  uliWeightsIndicators: { es: 'Pesos de los indicadores', en: 'Indicator weights' },
+  uliWeightExcluded: { es: 'excluido', en: 'excluded' },
+
+  // the access chart, by distance band
+  bandChartTitle: {
+    es: 'Población con acceso, por distancia',
+    en: 'Population with access, by distance',
+  },
+  bandChartHelp: {
+    es: 'Porcentaje de la población con acceso dentro de cada distancia. La barra resaltada es la distancia del mapa; haga clic en otra para cambiarla.',
+    en: 'Percentage of the population with access within each distance. The highlighted bar is the distance mapped; click another to change it.',
+  },
+  bandChartArea: { es: 'Área seleccionada', en: 'Selected area' },
+
+  // the liveability report
+  report: { es: 'Informe PDF', en: 'PDF report' },
+  reportHelp: {
+    es: 'Un informe de entornos vivibles con lo que se muestra, para guardar como PDF desde el diálogo de impresión',
+    en: 'A liveability report of what is shown, to save as a PDF from the print dialogue',
+  },
+  reportTitle: { es: 'Informe de entornos vivibles', en: 'Liveability report' },
+  reportGenerated: { es: 'Generado', en: 'Generated' },
+  reportSubject: { es: 'Área del informe', en: 'Area reported' },
+  reportIndex: { es: 'Índice', en: 'Index' },
+  reportDomains: { es: 'Dominios e indicadores', en: 'Domains and indicators' },
+  reportScore: { es: 'Puntos respecto a la referencia', en: 'Points from the reference' },
+  reportMaps: { es: 'Mapa', en: 'Map' },
+  reportMethods: { es: 'Método', en: 'Method' },
+  reportSources: { es: 'Fuentes', en: 'Sources' },
+  reportSettings: { es: 'Configuración del índice', en: 'Index settings' },
+  reportPublished: {
+    es: 'Índice publicado, con pesos iguales',
+    en: 'Published index, with equal weights',
+  },
+  reportNoIndex: {
+    es: 'Seleccione el índice de entornos vivibles para generar el informe.',
+    en: 'Select the liveability index to produce the report.',
+  },
+  reportMapFailed: {
+    es: 'El mapa no pudo incluirse (el mapa base no permite exportarlo); el resto del informe está completo.',
+    en: 'The map could not be included (the basemap does not allow it to be exported); the rest of the report is complete.',
+  },
 };
 
 // Vocabularies that arrive from the data in English.

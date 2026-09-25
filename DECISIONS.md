@@ -413,6 +413,35 @@ Decided:
 
 ---
 
+## 15. The ULI indicator set, heat-adjusted walkability and user weights (22 September 2026)
+
+**Indicators.** The index uses the rows of the refined variable sheet (`Update_on_ULI - 2026-09-22/excel_work_sheet_key.xlsx`) that Carl marked: the numbered core measures 1–10 and the rows with `*`.
+- **Paired rows.** Where the sheet pairs "access to X" with "% of population with access to X", one indicator serves both, because at a sample point they are the same measure.
+- **Domains.** Each indicator sits in the domain that owns its framework subdomain (the sheet's "domain definitions").
+- **Appropriateness.** Whether each indicator belongs is to be investigated once the index is built.
+- **Left out, with reasons:** thermal comfort as an ambient indicator (see below); heat exposure (awaiting WP02); LPUGS availability (no sample point form yet); tree canopy and protected cycle lanes (too sparse to vary); and indicators of the provisional index the sheet does not mark (police, public transport, household goods, sport, employers, intersection density). Intersection density is part of walkability.
+
+**Linked indicators.** `final_indicators.gpkg` and the UTCI GeoPackage are linked as delivered (`linkage_indicators`).
+- **Identification.** `final_indicators.gpkg` carries no identifiers, so its features are identified by geometry against `geography/mexicali_reference_areas.gpkg`. Its manzanas match by overlap; a few parts of multipart blocks are combined.
+- **Assumption.** Missing flood values are taken as no exposure. This is pending confirmation from the work package.
+- **Replication.** Sample points take the values of the area containing them (DECISIONS §8: replicated, and flagged).
+
+**Walkability.**
+- **Distance.** Mexicali's walkability judges daily living at 300 m, with 500 m offered for comparison.
+- **Thermal comfort** enters the index only through walkability.
+- **Heat variants.** Walkability is adjusted for GUHVI, UTCI (daytime mean), or both, in two forms:
+  - *additive:* heat is a further z-scored component, as the walkability index itself is built;
+  - *attenuation:* walkability's percentile rank is reduced by up to half at the hottest, so shade cannot make up for having nothing to walk to.
+- **Scoring.** The index is scored with every variant against its own goalposts, and the dashboard's settings choose between them.
+- **GUHVI counted twice.** GUHVI stays an ambient indicator in every variant, so the GUHVI-adjusted variants count heat vulnerability twice. This is deliberate: it keeps the index's structure the same in every variant.
+
+**User weights.**
+- **What they are for.** The index rewards balance by design. The dashboard lets a reader impose importance weights as an expression of personal preference, not of evidence.
+- **How they are computed.** Such scores are recomputed in the browser from area-average indicator scores, so they are labelled *exploratory*.
+- **Reset.** The published, sample-point scores return when the weights are reset.
+
+---
+
 ## 14. Still open
 
 1. **Leads for WP03-WP08.** Everything else is ready; the work packages are
