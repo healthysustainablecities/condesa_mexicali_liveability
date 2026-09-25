@@ -52,7 +52,10 @@ const nextFrame = () => new Promise((resolve) => {
 });
 const BASEMAP_KEYS = ['streets', 'satellite', 'none'];
 // the only reasons a pane's pixel size can have changed
-const LAYOUT_REASONS = new Set(['boot', 'layout']);
+const LAYOUT_REASONS = new Set(['boot', 'layout', 'panel']);
+// the split between two panes, as a share of the map left visible beside the
+// panel: the middle by default, and wherever the reader drags it
+const SPLIT_LIMITS = [0.15, 0.85];
 // Which region and scale each pane opens on, in order of preference. Condesa
 // at lot scale is the subject; Mexicali's grid is the comparison.
 const DEFAULT_REGIONS = [['condesa', 'mexicali'], ['mexicali', 'condesa']];
@@ -84,11 +87,19 @@ class App {
     setLang(state.lang);
 
     const index = await (await fetch('data/datasets.json')).json();
-    if (!index.datasets.length) {
+    // The site shows datasets of one type at a time: a combined dataset (the
+    // general indicators, and a composite index as a theme of its own), a
+    // composite index's own dashboard, or the general indicator explorer.
+    // ?type= chooses; otherwise the first of those deployed opens.
+    const types = new Set(index.datasets.map((d) => d.type || 'general'));
+    const asked = new URLSearchParams(window.location.search).get('type');
+    this.type = types.has(asked) ? asked
+      : ['combined', 'composite', 'general'].find((type) => types.has(type));
+    this.index = index.datasets.filter((d) => (d.type || 'general') === this.type);
+    if (!this.index.length) {
       this.toast('No datasets found in data/. Run build/deploy.sh first.');
       return;
     }
-    this.index = index.datasets;
     for (const entry of index.datasets) {
       this.datasets.set(entry.slug, await this.loadDataset(entry.slug));
     }
@@ -107,6 +118,7 @@ class App {
     this.applyDefaults(first);
     this.buildPanes();
     this.wireControls();
+    this.wireSplitter();
     this.measure = new MeasureTool({
       box: $('measureBox'), total: $('measureTotal'), hint: $('measureHint'),
       undo: $('mUndo'), clear: $('mClear'), done: $('mDone'),
@@ -134,8 +146,18 @@ class App {
       ['manifest.json', 'indicators.json', 'stats.json'].map(async (file) =>
         (await fetch(`${base}/${file}`)).json()),
     );
+    // a composite index's regions compared as smoothed distributions, where
+    // the export wrote them
+    let distributions = null;
+    if (manifest.distributions) {
+      try {
+        distributions = await (await fetch(`${base}/${manifest.distributions}`)).json();
+      } catch (error) {
+        distributions = null;
+      }
+    }
     return {
-      slug, manifest, indicators, stats,
+      slug, manifest, indicators, stats, distributions,
       hasNetwork: Boolean((manifest.layers || {}).network),
     };
   }
@@ -178,6 +200,85 @@ class App {
         );
       }
     }, 'defaults');
+  }
+
+  /**
+   * True where the index's own dashboard is on screen: always, for a
+   * composite dataset, and for a combined one while its index's theme is
+   * chosen.  The sidebar then shows the index box and its profile in place of
+   * the indicator controls.
+   */
+  indexMode() {
+    if (this.type === 'composite') return true;
+    return this.type === 'combined' && Boolean(this.resolved && this.resolved.composite);
+  }
+
+  /**
+   * Split the two panes at the middle of the map left visible beside the
+   * panel (or where the reader dragged the divider), rather than the middle
+   * of the window, whose left half the panel partly covers.
+   */
+  layoutSplit() {
+    const panes = $('panes');
+    const splitter = $('splitter');
+    if (!state.compare) {
+      panes.style.gridTemplateColumns = '';
+      splitter.hidden = true;
+      return;
+    }
+    const width = panes.clientWidth;
+    const controls = $('controls');
+    const start = Math.min(width * 0.6, controls.offsetLeft + controls.offsetWidth + 10);
+    const ratio = this.splitRatio === undefined ? 0.5 : this.splitRatio;
+    const x = Math.round(start + (width - start) * ratio);
+    panes.style.gridTemplateColumns = `${x}px 1fr`;
+    splitter.style.left = `${x}px`;
+    splitter.hidden = false;
+  }
+
+  /** Drag the divider between the panes; double-click returns it to the middle. */
+  wireSplitter() {
+    const splitter = $('splitter');
+    const resize = () => {
+      for (const pane of this.visiblePanes()) if (pane.map) pane.resize();
+    };
+    splitter.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      splitter.setPointerCapture(event.pointerId);
+      splitter.classList.add('dragging');
+      let pending = false;
+      const move = (e) => {
+        const width = $('panes').clientWidth;
+        const controls = $('controls');
+        const start = Math.min(width * 0.6,
+          controls.offsetLeft + controls.offsetWidth + 10);
+        const ratio = (e.clientX - start) / Math.max(1, width - start);
+        this.splitRatio = Math.max(SPLIT_LIMITS[0], Math.min(SPLIT_LIMITS[1], ratio));
+        this.layoutSplit();
+        // the maps follow once a frame, not on every pointer event
+        if (!pending) {
+          pending = true;
+          setTimeout(() => { pending = false; resize(); }, 40);
+        }
+      };
+      const up = () => {
+        splitter.removeEventListener('pointermove', move);
+        splitter.removeEventListener('pointerup', up);
+        splitter.classList.remove('dragging');
+        resize();
+      };
+      splitter.addEventListener('pointermove', move);
+      splitter.addEventListener('pointerup', up);
+    });
+    splitter.addEventListener('dblclick', () => {
+      this.splitRatio = undefined;
+      this.layoutSplit();
+      resize();
+    });
+    window.addEventListener('resize', () => {
+      this.layoutSplit();
+      resize();
+    });
   }
 
   /** Every column any on-screen pane could show. */
@@ -308,6 +409,9 @@ class App {
           s.panes[i].scale = e.target.value;
           s.selected = null;
         }, 'scale');
+      });
+      section.querySelector('.smoothChk').addEventListener('change', (e) => {
+        update((s) => { s.panes[i].overlays.smooth = e.target.checked; }, 'overlay');
       });
     });
 
@@ -487,6 +591,14 @@ class App {
       const scales = manifest.regions[pane.region].scales;
       this.fill(section.querySelector('.scaleSel'), scales.map((key) =>
         [key, label((manifest.scales[key] || {}).label, key)]), pane.scale);
+      // a smooth surface is drawn from a regular grid's cells, so it is
+      // offered only where the scale is one
+      const smooth = section.querySelector('.smoothChk');
+      const gridded = Boolean((manifest.scales[pane.scale] || {}).raster);
+      smooth.checked = Boolean(pane.overlays.smooth) && gridded;
+      smooth.disabled = !gridded;
+      smooth.closest('label').classList.toggle('disabled', !gridded);
+      smooth.closest('label').title = t(gridded ? 'smoothHelp' : 'smoothGridOnly');
 
     });
   }
@@ -544,6 +656,7 @@ class App {
       document.body.classList.toggle(`panel-${i}`, state.panel === i);
     }
     document.querySelector('.pane[data-pane="1"]').hidden = !state.compare;
+    this.layoutSplit();
     this.applyStaticText();
     // give the browser a frame to lay the pane out before a map is built into
     // it, so MapLibre measures a container that has its size
@@ -557,6 +670,8 @@ class App {
     }
 
     this.resolved = this.applyIndexSettings(this.vocab.resolve(state.shared));
+    // the index's own layout, or the general one, follows what is selected
+    document.body.classList.toggle('mode-composite', this.indexMode());
     // A banded measure falls back to its shortest distance when the selection
     // names none.  Record that silently, so the hash, the exported caption and
     // the outlined table column all agree with the map -- and so that changing
@@ -586,6 +701,12 @@ class App {
     if (this.classification && this.uli) {
       this.classification.expression = this.uli.expression(this.resolved.column);
     }
+    // a distance searched only so far: the areas with nothing within it are
+    // drawn, charted and described as beyond it, not as missing
+    if (this.classification) {
+      this.classification.censored = ((this.vocab.raw || {}).censored
+        || {})[this.resolved.column] || null;
+    }
 
     this.renderControls();
     this.renderPaneControls();
@@ -594,7 +715,12 @@ class App {
       const pane = this.panes[i];
       if (!pane.ready || (!state.compare && i > 0)) continue;
       const dataset = this.datasets.get(state.panes[i].dataset);
-      pane.setScale(state.panes[i].scale);
+      // the scale's archive holding the column mapped (see tile groups in
+      // _export_dashboard); a computed score is drawn from its inputs'
+      pane.setScale(
+        state.panes[i].scale,
+        this.resolved ? (this.resolved.columns || [])[0] || this.resolved.column : null,
+      );
       const entry = dataset ? dataset.stats[state.panes[i].scale] : null;
       pane.render(this.resolved, this.classification, entry);
       // resizing moves the camera and emits moveend, so only do it when the
@@ -618,9 +744,18 @@ class App {
     // distribution, so the profile takes the chart's place above the legend.
     const composite = this.resolved && this.resolved.composite;
     $('profile').hidden = !composite;
+    // in a composite index's dashboard the legend belongs to the profile's
+    // card, under the name of what is mapped
+    const inCard = Boolean(composite) && this.indexMode();
+    $('legend').hidden = inCard;
     if (composite) {
       $('histo').innerHTML = '';
       renderProfile($('profile'), this, panes, datasets, statsEntries);
+      const holder = $('profile').querySelector('.profile-legend');
+      if (holder) {
+        if (inCard) renderLegend(holder, this.resolved, this.classification);
+        else holder.remove();
+      }
     } else {
       $('profile').innerHTML = '';
     }
@@ -646,6 +781,7 @@ class App {
       renderShowing(
         $('showing'), this.resolved, this.vocab, getLang(), theme,
         () => this.openPanel('infoPanel'),
+        this.indexMode() && this.uli ? this.uli.base : null,
       );
       renderInfo(
         $('infoBody'), this.resolved, this.vocab, first, activePanes(),
@@ -794,7 +930,7 @@ class App {
   renderConceptualModel() {
     const dataset = this.modelDataset();
     if (dataset) {
-      renderModel($('modelBody'), dataset, this.featuredStructure(dataset));
+      renderModel($('modelBody'), dataset, this.featuredStructure(dataset), this);
     }
   }
 
@@ -858,8 +994,18 @@ class App {
     }, 'uli');
   }
 
-  resetUliSettings() {
-    update((s) => { s.uli = defaultSettings(); }, 'uli');
+  /** Return to equal weights, keeping the walkability setting. */
+  resetUliWeights() {
+    update((s) => {
+      const attenuation = (s.uli || defaultSettings()).attenuation;
+      s.uli = { ...defaultSettings(), attenuation };
+    }, 'uli');
+  }
+
+  /** Open or close the note on walkability's attenuation by thermal comfort. */
+  toggleWalkInfo() {
+    this.walkInfoOpen = !this.walkInfoOpen;
+    this.render('uli');
   }
 
   openPanel(id) {

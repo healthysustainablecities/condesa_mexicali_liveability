@@ -2,6 +2,7 @@
  "datasets": [
   {
    "slug": "mexicali",
+   "type": "combined",
    "label": {
     "es": "Mexicali y Condesa",
     "en": "Mexicali and Condesa"

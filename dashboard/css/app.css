@@ -17,7 +17,7 @@
   --compare: #d989d2;
   --radius: 10px;
   /* wide enough for a horizontal legend to label eight or ten classes */
-  --controls-w: 400px;
+  --controls-w: 500px;
   /* the floating pane header's height, so drawers can open below it */
   --head-h: 60px;
   /* the y-axis gutter, shared by the chart and the legend beneath it: they
@@ -365,7 +365,7 @@ body.panel-2 #appTitle { display: none; }
    card left it invisible */
 .profile-chart .petal { cursor: pointer; stroke: rgba(74, 68, 60, 0.45);
   stroke-width: 1; }
-/* the mapped petal keeps its domain's colour and takes a heavy outline */
+/* the mapped petal keeps its colour and takes a heavy outline */
 .profile-chart .petal:hover { stroke-width: 2; }
 .profile-chart .petal.focus { stroke: var(--ink) !important; stroke-width: 2.2; }
 .profile-chart .grid { fill: none; stroke: var(--line); stroke-width: 0.8; }
@@ -382,12 +382,19 @@ body.panel-2 #appTitle { display: none; }
 .profile-chart .marker { fill: var(--ink); stroke: #fff; stroke-width: 1; }
 .profile-chart .marker.compare { fill: #fff; stroke: var(--compare);
   stroke-width: 2; }
-/* the conceptual model's vocabulary: each domain's arc on the rim, a dashed
-   connector to its node, and its score (after its penalty) across its sector */
-.profile-chart .domain-rim { fill: none; stroke-width: 3; stroke-linecap: round; }
+/* the conceptual model's vocabulary: each domain's track, a faint ring in its
+   fill coloured in its stroke beneath the indicators it counts, and a dashed
+   connector from its node */
+.profile-chart .track { cursor: pointer; }
+.profile-chart .track-base { fill: none; stroke-width: 1.2; }
+.profile-chart .track-arcs { fill: none; stroke-linecap: butt; }
+.profile-chart .track:hover .track-arcs,
+.profile-chart .track.focus .track-arcs { stroke-width: 4.6; }
+.profile-chart .track.set-aside { opacity: 0.35; }
 .profile-chart .connector { stroke-width: 1; stroke-dasharray: 2 2; }
-.profile-chart .domain-score { fill: none; stroke-width: 1.6;
-  stroke-dasharray: 4 2; }
+/* everything a hovered or opened domain does not count, set back */
+.profile-chart .dim { opacity: 0.2; transition: opacity 0.12s; }
+.profile-list .domain-head.unscored { opacity: 0.6; }
 .profile-chart .domain-node { cursor: pointer; }
 .profile-chart .domain-node circle { stroke-width: 2; }
 .profile-chart .domain-node text { font-size: 8.5px; font-weight: 700;
@@ -458,8 +465,10 @@ body.panel-2 #appTitle { display: none; }
 
 #modelPanel { width: min(1180px, 94vw); max-height: 92vh; top: 4vh;
   right: 3vw; }
-.model-layout { display: grid; gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+/* two columns at most -- figure | profile over domains | further reading --
+   and one where there is no room for two, without a media query */
+.model-layout { display: grid; gap: 18px 24px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(max(320px, calc(50% - 12px)), 1fr)); }
 .model-figure { display: block; width: 100%; max-height: 74vh; overflow: auto;
   border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .model-figure img { display: block; width: 100%; height: auto; }
@@ -476,8 +485,13 @@ iframe.model-figure { height: 74vh; }
   overflow-x: auto; white-space: nowrap; }
 .model-domains { list-style: none; padding: 0; margin: 0 0 8px; }
 .model-domains li { display: flex; align-items: center; gap: 6px;
-  margin-bottom: 3px; }
+  flex-wrap: wrap; margin-bottom: 3px; }
 .model-domains .comp-note { display: inline; }
+/* each domain's definition, from the framework, beneath its name */
+.model-domains .model-definition { flex-basis: 100%; margin: 0 0 6px 20px;
+  font-size: 11.5px; line-height: 1.4; }
+.describe-subdomains { font-size: 11.5px; line-height: 1.4; padding-left: 16px; }
+.describe-subdomains li { margin-bottom: 4px; }
 .model-lenses { line-height: 2; }
 .model-lenses .lens { font-size: 10px; padding: 1px 6px; margin: 0 3px 0 0; }
 .model-references { padding-left: 18px; margin: 0 0 8px; font-size: 12px; }
@@ -532,8 +546,10 @@ body.panel-2 .pane[data-pane="0"] .pane-head {
 
 /* ---- hover tooltip ---- */
 
+/* above every panel and modal: a tooltip is always about what is under the
+   pointer, wherever that is */
 #hoverTip {
-  position: fixed; pointer-events: none; display: none; z-index: 7;
+  position: fixed; pointer-events: none; display: none; z-index: 40;
   background: rgba(28, 25, 22, 0.93); color: #fff; padding: 5px 9px;
   border-radius: 6px; font-size: 11.5px; max-width: 250px; line-height: 1.4;
 }
@@ -657,8 +673,10 @@ body.measuring .map canvas { cursor: crosshair !important; }
    a note says what they have changed for as long as anything has. */
 
 #profile { position: relative; }
+/* the index's settings, at the chart's lower right, beside the circle */
+.profile-chart-wrap { position: relative; }
 .profile-cog {
-  position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px;
+  position: absolute; right: 2px; bottom: 2px; width: 28px; height: 28px;
   padding: 3px; border: 1px solid var(--line); border-radius: 50%;
   background: #fff; cursor: pointer; color: var(--muted);
 }
@@ -666,16 +684,13 @@ body.measuring .map canvas { cursor: crosshair !important; }
   color: var(--ink); border-color: var(--accent);
 }
 .profile-cog svg { display: block; width: 100%; height: 100%; fill: currentColor; }
-/* room for the cog beside the last row of the list */
-#profile .profile-list { margin-bottom: 30px; }
 .uli-note {
-  display: flex; align-items: center; gap: 8px; margin: 6px 36px 4px 0;
+  display: flex; align-items: center; gap: 8px; margin: 6px 0 4px;
   padding: 5px 8px; font-size: 11px; line-height: 1.35;
   background: var(--panel); border-left: 3px solid var(--tour);
   border-radius: 0 4px 4px 0;
 }
 .uli-note span { flex: 1; }
-.uli-note + .profile-cog { bottom: 8px; }
 .profile-chart .petal.set-aside { opacity: 0.3; stroke-dasharray: 2 2; }
 
 #uliPanel { width: min(1180px, 94vw); max-height: 92vh; top: 4vh; right: 3vw; }
@@ -728,3 +743,104 @@ body.measuring .map canvas { cursor: crosshair !important; }
 /* The liveability report is built into #report and shown only when printed
    (css/print.css); on screen it never appears, even while being built. */
 #report { display: none; }
+
+/* ---- a composite index's own dashboard (manifest.type 'composite') ----
+   The index box replaces the indicator controls: what is mapped of the index
+   is chosen on its profile, and named beneath the index in the profile's card,
+   above the legend.  The controls stay in the page, hidden. */
+
+body.mode-composite #panelBody .field:not(#themeField) { display: none; }
+body.mode-composite #profile { border-bottom: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px); margin-bottom: 12px; }
+.profile-mapped { font-weight: 600; font-size: 12.5px; margin: -2px 0 6px; }
+.profile-legend { margin: 0 0 8px; }
+.profile-legend .leg-row { padding-left: 0; }
+.profile-chart .dot { cursor: pointer; }
+.profile-chart .dot circle { stroke-width: 1.6; }
+.profile-chart .dot text { font-size: 5.8px; font-weight: 700; fill: var(--ink);
+  pointer-events: none; }
+.profile-chart .dot:hover circle, .profile-chart .dot.focus circle { stroke-width: 3; }
+.profile-chart .dot.focus circle { stroke: var(--ink) !important; }
+.profile-chart .dot.set-aside { opacity: 0.35; }
+.profile-chart .dot.inactive, .profile-chart .petal.inactive { cursor: help; }
+.profile-chart .dot.inactive text { fill: var(--muted); }
+.profile-chart .domain-node.mapped circle { stroke: var(--ink) !important;
+  stroke-width: 3.2; }
+.profile-list li.inactive { opacity: 0.6; cursor: help; }
+
+/* the walkability setting beneath the list: attenuated by thermal comfort by
+   default, marked so, with a note on what attenuation does */
+.uli-walk { display: flex; align-items: center; gap: 6px; margin: 8px 36px 4px 0;
+  padding: 5px 8px; background: var(--panel); border-left: 3px solid var(--tour);
+  border-radius: 0 4px 4px 0; font-size: 11.5px; }
+.uli-walk select { flex: 1; min-width: 0; font: inherit; font-size: 11.5px;
+  padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px;
+  background: #fff; color: inherit; }
+.uli-default { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 1px 6px; border-radius: 3px;
+  background: var(--tour); color: var(--ink); }
+.uli-info-btn.on { background: var(--ink); color: #fff; }
+.uli-info-box { margin: 4px 36px 6px 0; padding: 8px 10px; font-size: 11.5px;
+  line-height: 1.45; background: #fff; border: 1px solid var(--line);
+  border-radius: 6px; }
+.uli-info-box p { margin: 0 0 6px; }
+.att-plot { display: block; width: 100%; max-width: 440px; height: auto;
+  margin: 2px 0 4px; }
+.att-plot .att-line { fill: none; stroke: #3BBFA3; stroke-width: 2; }
+.att-plot .att-range { fill: var(--panel); }
+.att-plot .att-bound { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 2; }
+.att-plot .att-grid { stroke: var(--line); stroke-width: 0.6; }
+.att-plot .att-tick, .att-plot .att-note { font-size: 8.5px; fill: var(--muted); }
+.att-plot .att-rank { font-size: 8.5px; fill: var(--ink); font-weight: 700; }
+.att-plot .att-axis { font-size: 9px; fill: var(--ink); }
+
+/* the settings: the regions side by side, and their distributions */
+.uli-top { margin-bottom: 4px; }
+.uli-top .uli-walk, .uli-top .uli-info-box { margin-right: 0; }
+.uli-regions { display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.uli-regions .profile-chart { max-height: 52vh; }
+.kde { margin: 8px 0 4px; }
+.kde-title { font-weight: 600; font-size: 12.5px; margin-bottom: 4px; }
+.kde-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 11.5px;
+  margin-bottom: 2px; }
+.kde-key { display: inline-flex; align-items: center; gap: 6px; }
+.kde-key i { width: 14px; height: 10px; border: 2px solid; border-radius: 2px;
+  opacity: 0.8; }
+.kde-key small { color: var(--muted); }
+.kde-plot { display: block; width: 100%; max-width: 760px; height: auto; }
+.kde-plot .kde-area { fill-opacity: 0.25; stroke-width: 1.8; }
+.kde-plot .kde-mean { stroke-width: 1.5; stroke-dasharray: 4 2; }
+.kde-plot .kde-ref { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 2; }
+.kde-plot .kde-axis, .kde-plot .kde-tick { stroke: var(--muted); stroke-width: 1; }
+.kde-plot .kde-label { font-size: 10px; fill: var(--muted); }
+.kde-plot .kde-axis-title { font-size: 10.5px; fill: var(--ink); }
+
+/* the conceptual model's profile, and what the item clicked on it is */
+.model-profile { max-width: 560px; margin: 0 auto; }
+.model-describe { font-size: 12.5px; line-height: 1.5; background: var(--panel);
+  border-radius: 6px; padding: 8px 12px; margin: 6px 0 14px; }
+.model-describe h3 { margin: 0 0 4px; font-size: 14px; }
+.model-describe h4 { margin: 8px 0 2px; font-size: 12px; }
+.model-describe p { margin: 0 0 6px; }
+.model-describe ul { margin: 0 0 6px; padding-left: 18px; }
+.model-describe li.inactive { color: var(--muted); }
+.describe-sources { font-size: 11.5px; color: var(--muted); }
+.describe-inactive { border-left: 3px solid var(--tour); padding-left: 8px; }
+
+/* ---- the divider between two panes (app.layoutSplit) ---- */
+#splitter {
+  position: absolute; top: 0; bottom: 0; width: 10px; margin-left: -5px;
+  z-index: 4; cursor: col-resize; touch-action: none;
+}
+#splitter::after {
+  content: ''; position: absolute; top: 50%; left: 3px; width: 4px; height: 44px;
+  margin-top: -22px; border-radius: 2px; background: var(--muted); opacity: 0.55;
+}
+#splitter:hover::after, #splitter.dragging::after { opacity: 1; background: var(--ink); }
+#splitter.dragging { background: rgba(0, 0, 0, 0.06); }
+
+/* ---- the smooth surface toggle, beside the scale ---- */
+.smoothField { align-items: center; }
+.smoothField input { margin: 5px auto 2px; width: 15px; height: 15px; }
+.smoothField.disabled { opacity: 0.45; }

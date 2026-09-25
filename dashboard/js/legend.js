@@ -9,7 +9,7 @@
 // one pane at a time would answer half the question.  Clicking the same swatch
 // again clears it.
 
-import { LTS_COLORS, NO_DATA } from './choropleth.js';
+import { BEYOND, LTS_COLORS, NO_DATA } from './choropleth.js';
 import { state, update } from './state.js';
 import { label, number, t, withUnits } from './strings.js';
 import { measureLabel } from './text.js';
@@ -132,9 +132,26 @@ function legendCells(resolved, classification) {
   }).join('');
 }
 
+/**
+ * A last cell for the areas with nothing within the distance searched, where
+ * the measure is a censored distance: it has a bar of its own in the chart,
+ * so it takes a cell here, labelled at its left boundary like the others.
+ */
+function beyondCell(classification) {
+  const censored = classification.censored;
+  if (!censored) return '';
+  const text = t('censoredBeyond').replace('{d}', `${formatBreak(censored.distance)} m`);
+  return `<div class="leg-item beyond" title="${text.replace(/"/g, '&quot;')}">
+      <span class="patch" style="background:${BEYOND}"></span>
+      <span class="leg-label">${formatBreak(censored.distance)}</span>
+    </div>`;
+}
+
 /** The value the row ends at, where the topmost class is not open-ended. */
 function legendEnd(classification) {
   if (classification.kind !== 'classes') return '';
+  // the cell for what lies beyond carries that boundary instead
+  if (classification.censored) return '';
   const last = classification.classes[classification.classes.length - 1];
   if (last.max === null || last.max === undefined) return '';
   return `<div class="leg-end">${formatBreak(last.max)}</div>`;
@@ -165,8 +182,11 @@ export function renderLegend(element, resolved, classification) {
   // units belong to the measure, not to the bands; a banded legend's swatches
   // are metres whatever the measure's own unit is
   const units = resolved.units;
+  const censored = classification.censored;
   const notes = [
     `<span class="leg-swatch" style="background:${NO_DATA}"></span>${t('noData')}`,
+    censored ? `<span class="leg-swatch" style="background:${BEYOND}"></span>${
+      t('censoredNote').replace(/\{d\}/g, `${formatBreak(censored.distance)} m`)}` : '',
     classification.scale === 'log2' ? t('log2Scale') : '',
   ].filter(Boolean);
   element.innerHTML = `
@@ -175,7 +195,8 @@ export function renderLegend(element, resolved, classification) {
     </div>
     <div class="leg-row${
   classification.kind === 'classes' ? ' cuts' : ''}">${
-  legendCells(resolved, classification)}${legendEnd(classification)}</div>
+  legendCells(resolved, classification)}${beyondCell(classification)}${
+  legendEnd(classification)}</div>
     <div class="leg-foot">${notes.join(' · ')}</div>
   `;
 

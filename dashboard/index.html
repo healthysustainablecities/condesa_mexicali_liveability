@@ -32,6 +32,8 @@
         <label class="pane-field"><span data-s="scale">Escala</span>
           <select class="scaleSel"
                   title="A qué áreas se agregan los resultados; la escala cambia lo que se ve"></select></label>
+        <label class="pane-field smoothField"><span data-s="smooth">Suavizar</span>
+          <input type="checkbox" class="smoothChk"></label>
         <label class="pane-field datasetField"><span data-s="dataset">Conjunto</span>
           <select class="datasetSel"></select></label>
         <button class="btn compare" id="compareBtn" data-s="compare"
@@ -48,6 +50,8 @@
           <select class="regionSel"></select></label>
         <label class="pane-field"><span data-s="scale">Escala</span>
           <select class="scaleSel"></select></label>
+        <label class="pane-field smoothField"><span data-s="smooth">Suavizar</span>
+          <input type="checkbox" class="smoothChk"></label>
         <label class="pane-field datasetField"><span data-s="dataset">Conjunto</span>
           <select class="datasetSel"></select></label>
       </div>
@@ -56,6 +60,9 @@
       <div class="pop-legend" hidden></div>
     </section>
   </main>
+  <!-- The divider between two panes: drag it, or double-click to return it to
+       the middle of the map beside the panel. -->
+  <div id="splitter" hidden></div>
 
   <!-- Floats over the first pane; scrolls itself; collapses in three steps. -->
   <aside id="controls">
@@ -72,7 +79,7 @@
       <!-- What the map is showing, in plain language, before any control. -->
       <div id="showing" hidden></div>
 
-      <label class="field"><span data-s="theme">Tema</span>
+      <label class="field" id="themeField"><span data-s="theme">Tema</span>
         <select id="themeSel"
                 title="Los temas del taller: cada indicador pertenece a uno"></select></label>
       <label class="field"><span data-s="indicator">Indicador</span>

@@ -12,5 +12,8 @@ data/raw/*
 dashboard/vendor/
 dashboard/build/_work/
 dashboard/data/**/*.pmtiles
+# the grid rasters for the smooth surface, also rebuilt
+dashboard/data/**/*.f32
+dashboard/data/**/*.i32
 dashboard/data/**/data_dictionary.xlsx
 dashboard/data/**/data_dictionary.pdf

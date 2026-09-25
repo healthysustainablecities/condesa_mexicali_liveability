@@ -2,7 +2,11 @@
 # Build the dashboard's PMTiles archives from the GeoJSONSeq layers exported by
 # process/_export_dashboard.py (run first, inside the ghsci container).
 #
-#   <slug>_<scale>.pmtiles   one per aggregation scale (its own tile budget)
+#   <slug>_scale_<scale>__<group>.pmtiles
+#                            one per aggregation scale and tile group of
+#                            columns (see _export_dashboard.tile_groups): each
+#                            has its own tile budget, and no feature is heavy
+#                            enough to be dropped from the zoomed out tiles
 #   <slug>_network.pmtiles   the street network (dense; its own archive)
 #   <slug>_context.pmtiles   destinations, open space entries, boundaries
 #
@@ -20,6 +24,7 @@
 #   GHSCI_CONTAINER  container to copy the export from (default "ghsci")
 #   REUSE_EXPORT=1   tile the copy already in build/_work/<slug> instead of
 #                    re-copying, for iterating on tippecanoe flags
+#   ONLY_CHANGED=1   keep each scale archive that is newer than its layer
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Scratch lives outside the repo: the repo is inside a OneDrive-synced
@@ -57,18 +62,40 @@ for slug in "$@"; do
       "${GHSCI_CONTAINER:-ghsci}:/tmp/dashboard_export/$slug" "$MOUNT/"
   fi
 
-  # One archive per scale.  Polygons are coalesced rather than dropped: an area
-  # that vanishes at low zoom reads as missing data, which is exactly the thing
-  # the left-joined export exists to avoid.
+  # One archive per scale and tile group.  Polygons are coalesced rather than
+  # dropped: an area that vanishes at low zoom reads as missing data, which is
+  # exactly the thing the left-joined export exists to avoid.  The export keeps
+  # each group narrow enough that nothing should need dropping at all, so any
+  # tile tippecanoe had to thin is reported, and fails the build unless
+  # ALLOW_DROPS=1 (a scale that thins is one that empties when zoomed out).
+  dropped=()
   for f in "$WORK/$slug"/scale_*.geojsonl; do
     [ -e "$f" ] || continue
     layer=$(basename "$f" .geojsonl)
+    # ONLY_CHANGED=1 keeps an archive newer than its layer, so a re-export
+    # that changed a few groups re-tiles only those
+    if [ "${ONLY_CHANGED:-0}" = "1" ] && [ "$WORK/${slug}_${layer}.pmtiles" -nt "$f" ]; then
+      echo "-- $layer (unchanged, kept)"
+      continue
+    fi
     echo "-- $layer"
-    tc tippecanoe -q --force -o "/data/${slug}_${layer}.pmtiles" -l "$layer" \
+    log="$WORK/$slug/$layer.tippecanoe.log"
+    tc tippecanoe --force -o "/data/${slug}_${layer}.pmtiles" -l "$layer" \
       -Z6 -z$SCALE_MAXZOOM --maximum-tile-bytes=5000000 \
       --coalesce-smallest-as-needed --drop-smallest-as-needed \
-      "/data/$slug/$layer.geojsonl"
+      "/data/$slug/$layer.geojsonl" > "$log" 2>&1 || { cat "$log"; exit 1; }
+    thinned=$(grep -c -e "Going to try" -e "too many features" -e "too much data" "$log" || true)
+    if [ "$thinned" -gt 0 ]; then
+      echo "   ! $thinned tiles thinned to fit (see $log)"
+      dropped+=("$layer")
+    fi
   done
+  if [ ${#dropped[@]} -gt 0 ] && [ "${ALLOW_DROPS:-0}" != "1" ]; then
+    echo "!! features were dropped from: ${dropped[*]}"
+    echo "   narrow the tile groups (dashboard.tile_max_columns) and re-export,"
+    echo "   or set ALLOW_DROPS=1 to accept it"
+    exit 1
+  fi
 
   if [ -e "$WORK/$slug/network.geojsonl" ]; then
     echo "-- network (own archive)"
@@ -98,6 +125,6 @@ for slug in "$@"; do
   fi
 
   echo "-- built:"
-  ls -lh "$WORK/${slug}"_*.pmtiles
+  ls -lh "$WORK/${slug}"_context.pmtiles "$WORK/${slug}"_network.pmtiles "$WORK/${slug}"_scale_*.pmtiles 2>/dev/null
   echo "   run: bash build/deploy.sh $slug"
 done

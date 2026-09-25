@@ -47,21 +47,43 @@ API key) are the one thing that still needs the internet.
 Choose **sin mapa base / no basemap** when there is none: the indicator layers
 still render.
 
+## Dos tableros / Two dashboards
+
+The exporter writes one of two types of dataset (`dashboard.type` in the region
+YAML, or `--type=`), and the site shows datasets of one type at a time:
+
+| type | slug | what it shows |
+|---|---|---|
+| `composite` | `mexicali` | **the Urban Liveability Index dashboard** (this study's priority): the index box in place of the indicator menus, the radial profile laid out as the conceptual model, walkability with or without thermal comfort attenuation, the regions side by side in the settings with their distributions (`distributions.json`), and a description of every item in the conceptual model panel |
+| `general` | `mexicali_general` | every configured indicator by theme, as before the index was added |
+
+The composite type opens where both are deployed; `?type=general` opens the
+other (e.g. `http://localhost:8123/?type=general`).
+
 ## Cómo se generan los datos / Regenerating the data
 
 Three steps, in the analysis repo and then here:
 
 ```bash
 # 1. in the ghsci container: layers, manifest, stats, vocabulary
-/env/bin/python _export_dashboard.py "data/MX/MX_Mexicali_2025_ULI.yml"
+/env/bin/python subprocesses/_export_dashboard.py "data/MX/MX_Mexicali_2025_ULI.yml"
+/env/bin/python subprocesses/_export_dashboard.py "data/MX/MX_Mexicali_2025_ULI.yml" --type=general
 
 # 2. here: build the PMTiles archives (needs docker image tippecanoe:local)
 docker build -t tippecanoe:local build/
-bash build/build_tiles.sh mexicali
+bash build/build_tiles.sh mexicali mexicali_general
 
 # 3. here: copy into data/ and rebuild the dataset index
-bash build/deploy.sh mexicali
+bash build/deploy.sh mexicali mexicali_general
 ```
+
+**Each scale is tiled in groups of columns** (`<slug>_scale_<scale>__<group>.pmtiles`,
+by theme, at most 60 columns each; the composite dataset is one group). A
+feature carrying all ~660 values was too heavy to tile: tippecanoe dropped most
+of the 100 m grid from the zoomed-out tiles, and the city could not be seen
+whole. `build_tiles.sh` now fails if any tile had to drop features (set
+`ALLOW_DROPS=1` to accept it), and the viewer reads each column from the
+archive its group is in (`indicators.column_group`).
 
 The exporter is generic: it reads the region's own `accessibility`,
 `cycling_indicators` and `custom_aggregations` configuration, enumerates every

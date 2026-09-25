@@ -191,12 +191,11 @@ export class Vocabulary {
     if (selection.variable) parts.push(this.variableLabel(selection.variable));
     if (selection.group) parts.push(selection.group.replace(/_/g, ' '));
     parts.push(label(m.label, selection.measure));
-    const network = this.networks[selection.network];
-    if (network && selection.network !== 'walk') {
-      parts.push(label(network.label, selection.network));
-    } else if (network) {
-      parts.push(label(network.label, 'walk'));
-    }
+    // a network only where the measure is measured along one: an index or
+    // a linked value has none, whatever network the selection carries over
+    const network = m.networks && m.networks[selection.network]
+      ? this.networks[selection.network] : null;
+    if (network) parts.push(label(network.label, selection.network));
     if (selection.distance) parts.push(`${selection.distance} m`);
     return parts.join(' · ');
   }

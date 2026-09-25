@@ -13,7 +13,13 @@ export class Themes {
     // a theme with no indicators is kept in the config so the vocabulary is
     // complete and documented, but there is nothing to navigate to, so it is
     // not offered (Vivienda is not a GHSCI output here)
-    this.all = (indicators.themes || []).filter((t) => t.families.length);
+    // a composite index's theme comes first: in a combined dataset, choosing
+    // it is what opens the index's own dashboard
+    const composite = new Set((indicators.families || [])
+      .filter((f) => f.composite).map((f) => f.id));
+    const rank = (t) => (t.families.some((f) => composite.has(f)) ? 0 : 1);
+    this.all = (indicators.themes || []).filter((t) => t.families.length)
+      .sort((a, b) => rank(a) - rank(b));
     this.byId = new Map(this.all.map((t) => [t.id, t]));
     this.byFamily = new Map();
     for (const theme of this.all) {

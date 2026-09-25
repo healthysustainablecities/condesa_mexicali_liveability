@@ -9,8 +9,10 @@
 import { DEFAULT_LANG, setLang } from './strings.js';
 import { decodeSettings, defaultSettings, encodeSettings } from './uli.js';
 
+// encoded by position in the hash: append, never reorder
 export const OVERLAYS = [
   'choropleth', 'destinations', 'network', 'population', 'boundaries',
+  'smooth',
 ];
 
 export const state = {
@@ -52,11 +54,11 @@ export const state = {
   panes: [
     { dataset: null, region: null, scale: null,
       overlays: { choropleth: true, destinations: true, network: false,
-        population: false, boundaries: true },
+        population: false, boundaries: true, smooth: false },
       view: null },
     { dataset: null, region: null, scale: null,
       overlays: { choropleth: true, destinations: true, network: false,
-        population: false, boundaries: true },
+        population: false, boundaries: true, smooth: false },
       view: null },
   ],
 };

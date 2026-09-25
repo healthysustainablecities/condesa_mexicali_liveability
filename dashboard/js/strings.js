@@ -140,6 +140,24 @@ const S = {
   theme: { es: 'Tema', en: 'Theme' },
   byTheme: { es: 'Por tema', en: 'By theme' },
 
+  // a distance beyond the distance searched: measured, and not found within it
+  censoredBeyond: { es: '> {d}', en: '> {d}' },
+  censoredNote: {
+    es: '> {d}: ningún destino a menos de {d}; el acceso sólo se evaluó hasta {d}',
+    en: '> {d}: none within {d}; access was only evaluated up to {d}',
+  },
+
+  // a regular grid drawn as a smooth surface (js/smooth.js)
+  smooth: { es: 'Suavizar', en: 'Smooth' },
+  smoothHelp: {
+    es: 'Dibuja la cuadrícula como una superficie continua: los valores de las celdas vecinas se suavizan y se colorean con las mismas clases de la leyenda.',
+    en: 'Draws the grid as a continuous surface: neighbouring cells’ values are smoothed, and coloured by the same classes as the legend.',
+  },
+  smoothGridOnly: {
+    es: 'Sólo para la cuadrícula de 100 m: las demás escalas no son una cuadrícula regular.',
+    en: 'Only for the 100 m grid: the other scales are not a regular grid.',
+  },
+
   // the composite index profile
   profileTitle: { es: 'Perfil del índice', en: 'Index profile' },
   profileIndex: { es: 'Índice', en: 'Index' },
@@ -148,19 +166,32 @@ const S = {
   },
   profileArea: { es: 'Área seleccionada', en: 'Selected area' },
   profileClear: { es: 'Volver a la región', en: 'Back to the region' },
+  profileIndexWhole: { es: 'Índice (todos los dominios)', en: 'Index (all domains)' },
   profileReference: {
-    es: 'Puntos por encima o por debajo de la referencia, el promedio en los puntos de muestra del área de estudio (0; una puntuación de 100 en los datos)',
-    en: 'Points above or below the reference, the average over the study area’s sample points (0; a score of 100 in the data)',
+    es: 'Puntos por encima o por debajo de la referencia (0): el promedio de cada indicador en los puntos de muestra de la región de estudio. El valor de una celda de la cuadrícula es el promedio de sus puntos; el de un área mayor o una región, el promedio ponderado por población',
+    en: 'Points above or below the reference (0): each indicator’s average over the study region’s sample points. A grid cell’s value is the average of its points; a larger area’s or a region’s, the population-weighted average',
   },
   profileSelf: {
     es: 'La región es su propia referencia, así que su perfil queda cerca de 0. Seleccione un área en el mapa o compare con otra región para ver las diferencias.',
     en: 'The region is its own reference, so its profile sits close to 0. Select an area on the map, or compare another region, to see the differences.',
   },
   profileHint: {
-    es: 'Cada pétalo es un indicador, del color de su dominio; haga clic en uno para mapearlo, en un dominio para ver sus indicadores, o en un área del mapa para ver su perfil.',
-    en: 'Each petal is an indicator, in its domain’s colour; click one to map it, a domain to list its indicators, or an area on the map to see its own profile.',
+    es: 'Cada pétalo es un indicador, del color de su puntuación; los anillos de color debajo marcan los dominios a los que cuenta (pase el cursor para ver su valor). Haga clic en un pétalo para mapearlo, en un dominio para ver sus indicadores, o en un área del mapa para ver su perfil.',
+    en: 'Each petal is an indicator, coloured by its score; the coloured rings beneath mark the domains it counts towards (hover to see its value). Click a petal to map it, a domain to list its indicators, or an area on the map to see its own profile.',
+  },
+  profileCountsTowards: { es: 'cuenta para', en: 'counts towards' },
+  profileEffective: {
+    es: 'peso efectivo en el índice', en: 'effective weight in the index',
+  },
+  profileShare: {
+    es: 'Un indicador que atañe a varios dominios cuenta en cada uno con una parte de su peso.',
+    en: 'An indicator bearing on several domains counts a share of its weight in each.',
+  },
+  profileUnscored: {
+    es: 'aún sin indicadores', en: 'no indicators yet',
   },
   profileDomains: { es: 'Dominios', en: 'Domains' },
+  profileByDomain: { es: 'Indicadores por dominio', en: 'Indicators by domain' },
   profileIndicator: { es: 'indicador', en: 'indicator' },
   profileIndicators: { es: 'indicadores', en: 'indicators' },
   profileLens: { es: 'Enfoque de cada indicador', en: 'Each indicator’s lens' },
@@ -172,13 +203,12 @@ const S = {
   conceptualModel: { es: 'Modelo conceptual', en: 'Conceptual model' },
   modelOpen: { es: 'Abrir en tamaño completo', en: 'Open full size' },
   modelZoom: { es: 'Haga clic para acercar o alejar', en: 'Click to zoom in or out' },
-  methodsScore: { es: 'puntuación', en: 'score' },
   profileMean: { es: 'Nivel medio', en: 'Mean level' },
   profilePenalty: {
     es: 'penalización por desequilibrio', en: 'imbalance penalty',
   },
   profilePenaltyHelp: {
-    es: 'Cuanto más desiguales son los ámbitos, mayor es la penalización: un perfil equilibrado puntúa más que uno desigual con el mismo promedio.',
+    es: 'Cuanto más desiguales son los dominios, mayor es la penalización: un perfil equilibrado puntúa más que uno desigual con el mismo promedio.',
     en: 'The more uneven the domains, the larger the penalty: a balanced profile scores higher than an uneven one with the same average.',
   },
   profileComponents: { es: 'Componentes', en: 'Components' },
@@ -186,6 +216,41 @@ const S = {
   profileWeight: { es: 'peso', en: 'weight' },
   profileExcluded: {
     es: 'excluido: no varía', en: 'left out: does not vary',
+  },
+  profileInactive: {
+    es: 'no se cuenta con esta configuración',
+    en: 'not counted with these settings',
+  },
+
+  // describing an item of the profile, in the conceptual model
+  describeMethod: { es: 'Cómo se mide', en: 'How it is measured' },
+  describeHint: {
+    es: 'Haga clic en un dominio o un indicador del gráfico para ver cómo se mide y con qué datos.',
+    en: 'Click a domain or an indicator on the chart to see how it is measured, and from what data.',
+  },
+  describeSoft: {
+    es: 'La distancia se puntúa con un umbral suave de {d}: 0,5 a {d}, cerca de 1 bien dentro y cerca de 0 bien más allá.',
+    en: 'The distance is scored with a soft threshold of {d}: 0.5 at {d}, close to 1 well within it and close to 0 well beyond it.',
+  },
+  describeWithin: { es: 'a', en: 'within' },
+  describeBeyond: { es: 'más allá', en: 'beyond' },
+  technicalReport: {
+    es: 'Documento técnico: cómo se calcula el índice (PDF)',
+    en: 'Technical report: how the index is calculated (PDF)',
+  },
+  describeSteps: {
+    es: 'La distancia se puntúa por escalones: {steps}; {beyond} más allá.',
+    en: 'The distance is scored in steps: {steps}; {beyond} beyond.',
+  },
+  describeHigher: { es: 'Más alto es mejor.', en: 'Higher is better.' },
+  describeLower: { es: 'Más bajo es mejor.', en: 'Lower is better.' },
+  describeGoalposts: {
+    es: 'Se reescala con las metas {min} y {max}; la referencia, el promedio de la región de estudio ({ref}), puntúa {centre}.',
+    en: 'Re-scaled against goalposts of {min} and {max}; the reference, the study region average ({ref}), scores {centre}.',
+  },
+  describeWalkVariant: {
+    es: 'Por defecto se atenúa por el confort térmico diurno; puede elegirse sin atenuación, y entonces el confort térmico cuenta en el entorno medioambiental.',
+    en: 'By default it is attenuated by daytime thermal comfort; it can be chosen without attenuation, and thermal comfort then counts in the ambient environment instead.',
   },
 
   // guided tour
@@ -245,12 +310,11 @@ const S = {
   // the composite index's settings (the cog on the profile)
   uliSettings: { es: 'Configuración del índice', en: 'Index settings' },
   uliSettingsHelp: {
-    es: 'Elegir la versión de la caminabilidad incluida y la importancia relativa de cada dominio',
-    en: 'Choose the version of walkability included and the relative importance of each domain',
+    es: 'La caminabilidad con o sin atenuación por confort térmico, las regiones lado a lado y la importancia relativa de cada dominio',
+    en: 'Walkability with or without thermal comfort attenuation, the regions side by side, and the relative importance of each domain',
   },
-  uliModified: { es: 'Índice modificado:', en: 'Index modified:' },
   uliExploratory: { es: 'exploratorio', en: 'exploratory' },
-  uliReset: { es: 'Restablecer', en: 'Reset' },
+  uliResetWeights: { es: 'Pesos iguales', en: 'Equal weights' },
   uliCustomWeights: { es: 'pesos personalizados', en: 'custom weights' },
   uliShowing: { es: 'Se muestra', en: 'Showing' },
   uliExact: { es: 'Puntuaciones publicadas', en: 'Published scores' },
@@ -262,47 +326,51 @@ const S = {
     es: 'Con pesos personalizados, el índice se recalcula en el navegador a partir de las puntuaciones promedio de cada área: es una aproximación exploratoria, que no coincide exactamente con las puntuaciones publicadas.',
     en: 'With custom weights, the index is recalculated in the browser from each area’s average scores: an exploratory approximation, which does not exactly match the published scores.',
   },
-  uliWalkTitle: { es: 'Caminabilidad incluida', en: 'Walkability included' },
-  uliWalkIntro: {
-    es: 'La caminabilidad combina el acceso a la vida diaria, la densidad de población y la de intersecciones. Puede incluirse tal cual o ajustada por el calor.',
-    en: 'Walkability combines access to daily living, population density and intersection density. It can be included as it is, or adjusted for heat.',
+  // walkability, attenuated by thermal comfort (the default) or not
+  uliDefault: { es: 'Predeterminado', en: 'Default' },
+  uliDefaultHelp: {
+    es: 'El índice como se publica: la caminabilidad atenuada por el confort térmico diurno.',
+    en: 'The index as published: walkability attenuated by daytime thermal comfort.',
   },
-  uliWalkDistance: { es: 'Distancia de la vida diaria', en: 'Daily living distance' },
-  uliWalkDistanceHelp: {
-    es: 'Acceso a alimentos frescos, tienda de conveniencia y transporte público dentro de {d}.',
-    en: 'Access to fresh food, a convenience store and public transport within {d}.',
+  uliWalkability: {
+    es: 'Caminabilidad incluida en el índice', en: 'Walkability included in the index',
   },
-  uliHeat: { es: 'Ajuste por calor', en: 'Heat adjustment' },
-  uliHeatNone: { es: 'Sin ajuste', en: 'No adjustment' },
-  uliHeatNoneHelp: {
-    es: 'La caminabilidad tal cual.',
-    en: 'Walkability as it is.',
+  uliAttenuationInfo: {
+    es: 'Qué hace la atenuación por confort térmico',
+    en: 'What thermal comfort attenuation does',
   },
-  uliHeatG: { es: 'Vulnerabilidad al calor (GUHVI)', en: 'Heat vulnerability (GUHVI)' },
-  uliHeatGHelp: {
-    es: 'Exposición, sensibilidad y capacidad de adaptación al calor, en una cuadrícula de 1 km. También forma parte del entorno medioambiental, así que cuenta dos veces.',
-    en: 'Exposure, sensitivity and adaptive capacity to heat, on a 1 km grid. It is also part of the ambient environment, so it counts twice.',
+  uliAttenuationPlot: {
+    es: 'La caminabilidad atenuada a medida que aumenta el calor diurno',
+    en: 'Walkability attenuated as daytime heat increases',
   },
-  uliHeatT: { es: 'Confort térmico (UTCI)', en: 'Thermal comfort (UTCI)' },
-  uliHeatTHelp: {
-    es: 'UTCI diurno sobre superficies peatonales el día más caluroso de 2023: sol y sombra al caminar.',
-    en: 'Daytime UTCI over pedestrian surfaces on the hottest day of 2023: sun and shade while walking.',
+  uliAttenuationX: {
+    es: 'Confort térmico diurno, UTCI medio (°C)',
+    en: 'Daytime thermal comfort, mean UTCI (°C)',
   },
-  uliHeatGT: { es: 'Ambos', en: 'Both' },
-  uliHeatGTHelp: {
-    es: 'Vulnerabilidad al calor y confort térmico a la vez.',
-    en: 'Heat vulnerability and thermal comfort together.',
+  uliAttenuationY: { es: 'Caminabilidad atenuada', en: 'Attenuated walkability' },
+  // the regions side by side, and their distributions
+  uliRegionsTitle: { es: 'Las regiones, lado a lado', en: 'The regions side by side' },
+  uliRegionsIntro: {
+    es: 'Cada región frente a la referencia, en la misma escala. Haga clic en el índice, un dominio o un indicador para comparar cómo se distribuyen los resultados de las regiones.',
+    en: 'Each region against the reference, on one scale. Click the index, a domain or an indicator to compare how the regions’ results are distributed.',
   },
-  uliForm: { es: 'Cómo se tiene en cuenta', en: 'How it is accounted for' },
-  uliFormAdditive: { es: 'Aditiva', en: 'Additive' },
-  uliFormAdditiveHelp: {
-    es: 'El calor es un componente más de la caminabilidad: una calle más fresca compensa tener menos destinos.',
-    en: 'Heat is one more component of walkability: a cooler street makes up for fewer destinations.',
+  uliDistributionMean: { es: 'media', en: 'mean' },
+  uliDistributionAreas: { es: 'áreas', en: 'areas' },
+  uliDistributionNote: {
+    es: 'Histogramas suavizados de los resultados de {scale} en cada región, ponderados por la población que representa cada área (en Condesa, 3,2 personas por lote). La línea vertical de cada región marca su media.',
+    en: 'Smoothed histograms of the {scale} results in each region, weighted by the population each area represents (in Condesa, 3.2 people per lot). Each region’s vertical line marks its mean.',
   },
-  uliFormMultiplicative: { es: 'Atenuación', en: 'Attenuation' },
-  uliFormMultiplicativeHelp: {
-    es: 'El calor reduce la caminabilidad, hasta la mitad en los lugares más calurosos: la sombra no compensa no tener a dónde caminar.',
-    en: 'Heat reduces walkability, by up to half in the hottest places: shade cannot make up for having nowhere to walk to.',
+  uliDistributionPoints: {
+    es: 'En puntos respecto a la referencia (0, la línea punteada).',
+    en: 'In points from the reference (0, the dashed line).',
+  },
+  uliDistributionPublished: {
+    es: 'Con pesos personalizados se muestran las puntuaciones publicadas, con pesos iguales.',
+    en: 'With custom weights, the published scores, with equal weights, are shown.',
+  },
+  uliDistributionMissing: {
+    es: 'No se exportó la distribución de este resultado.',
+    en: 'No distribution of this result was exported.',
   },
   uliWeightsTitle: { es: 'Importancia relativa', en: 'Relative importance' },
   uliWeightsIntro: {
@@ -370,6 +438,10 @@ const TERMS = {
   higher_is_better: { es: 'más alto es mejor', en: 'higher is better' },
   lower_is_better: { es: 'más bajo es mejor', en: 'lower is better' },
   // without brackets of its own: the legend title puts the units in brackets
+  'points from the reference (0 = study region average)': {
+    es: 'puntos respecto de la referencia (0 = promedio de la región de estudio)',
+    en: 'points from the reference (0 = study region average)',
+  },
   'index (100 = reference)': {
     es: 'índice, 100 = referencia', en: 'index, 100 = reference',
   },
@@ -448,15 +520,19 @@ export function withUnits(text, units) {
 
 const locale = () => (lang === 'es' ? 'es-MX' : 'en-AU');
 
+// a true minus sign: a hyphen is too slight to read at legend sizes, and
+// these are for display only
+const minus = (text) => text.replace(/^-/, '−');
+
 export function number(value, digits = 1) {
   if (value === null || value === undefined || Number.isNaN(value)) return '–';
-  return new Intl.NumberFormat(locale(), {
+  return minus(new Intl.NumberFormat(locale(), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(value);
+  }).format(value));
 }
 
 export function integer(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return '–';
-  return new Intl.NumberFormat(locale()).format(Math.round(value));
+  return minus(new Intl.NumberFormat(locale()).format(Math.round(value)));
 }

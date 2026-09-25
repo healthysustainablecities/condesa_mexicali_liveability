@@ -4,6 +4,7 @@
 // It does not own the indicator — that is shared, so that the two panes always
 // answer the same question — and it reads everything else from `state`.
 
+import { hideSurface, showSurface, surfaceImage } from './smooth.js';
 import {
   choroplethPaint, ltsPaint, LTS_COLORS, NO_DATA,
 } from './choropleth.js';
@@ -149,8 +150,12 @@ export class Pane {
     if (this.dataset.hasNetwork) {
       sources.network = { type: 'vector', url: url('network') };
     }
+    // one archive per scale and tile group of columns, or per scale for an
+    // export from before tile groups
     for (const key of Object.keys(this.dataset.manifest.scales)) {
-      sources[`scale_${key}`] = { type: 'vector', url: url(`scale_${key}`) };
+      for (const name of this.sourcesOf(key)) {
+        sources[name] = { type: 'vector', url: url(name) };
+      }
     }
     // no glyphs URL: nothing here is a symbol layer, and pointing at a font
     // server would be one more thing to fail in a room without wifi
@@ -254,7 +259,10 @@ export class Pane {
       console.error(`pane ${this.index}: could not add layers`, error);
       this.setNotice(String(error && error.message ? error.message : error));
     }
-    this.currentScale = 'grid'; // addLayers points the choropleth at the grid
+    // addLayers points the choropleth at the grid's first archive
+    this.currentSource = this.sourceFor('grid');
+    // a new style has no smoothed surface yet
+    this.smoothKey = null;
     this.wireHover();
     this.ready = true;
     // the app has already drawn its controls; this is what fills in the map
@@ -267,10 +275,11 @@ export class Pane {
 
     // the population grid sits under the choropleth: it is context for how the
     // aggregation was weighted, not a competing result
+    const grid = this.sourceFor('grid');
     if (manifest.scales.grid) {
       map.addLayer({
-        id: 'population', type: 'fill', source: 'scale_grid',
-        'source-layer': 'scale_grid', layout: { visibility: 'none' },
+        id: 'population', type: 'fill', source: grid,
+        'source-layer': grid, layout: { visibility: 'none' },
         paint: {
           'fill-color': [
             'interpolate', ['linear'], ['coalesce', ['get', 'pop_est'], 0],
@@ -282,21 +291,21 @@ export class Pane {
     }
 
     map.addLayer({
-      id: 'choropleth', type: 'fill', source: 'scale_grid',
-      'source-layer': 'scale_grid',
+      id: 'choropleth', type: 'fill', source: grid,
+      'source-layer': grid,
       paint: { 'fill-color': NO_DATA, 'fill-opacity': 0.7 },
     });
     map.addLayer({
-      id: 'choropleth-outline', type: 'line', source: 'scale_grid',
-      'source-layer': 'scale_grid',
+      id: 'choropleth-outline', type: 'line', source: grid,
+      'source-layer': grid,
       paint: {
         'line-color': 'rgba(60,55,50,0.35)',
         'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.1, 16, 0.7],
       },
     });
     map.addLayer({
-      id: 'choropleth-selected', type: 'line', source: 'scale_grid',
-      'source-layer': 'scale_grid', filter: NOTHING_SELECTED,
+      id: 'choropleth-selected', type: 'line', source: grid,
+      'source-layer': grid, filter: NOTHING_SELECTED,
       paint: SELECTED_PAINT,
     });
 
@@ -357,13 +366,11 @@ export class Pane {
     // region outlines, so a pane always shows which region it is looking at
     for (const key of Object.keys(manifest.regions || {})) {
       const region = manifest.regions[key];
-      const source = region.summary_scale
-        ? `scale_${region.summary_scale}`
-        : null;
-      if (!source || !manifest.scales[region.summary_scale]) continue;
+      if (!region.summary_scale || !manifest.scales[region.summary_scale]) continue;
+      const source = this.sourceFor(region.summary_scale);
       map.addLayer({
         id: `region-${key}`, type: 'line', source,
-        'source-layer': `scale_${region.summary_scale}`,
+        'source-layer': source,
         layout: { visibility: 'none' },
         paint: { 'line-color': '#1b1b1b', 'line-width': 2 },
       });
@@ -427,16 +434,41 @@ export class Pane {
     return `<b>${heading}</b>${extra}`;
   }
 
-  /** Point the choropleth at the pane's current scale. */
-  setScale(scaleKey) {
+  /** The archives (sources) a scale is tiled as. */
+  sourcesOf(scaleKey) {
+    const entry = this.dataset.manifest.scales[scaleKey] || {};
+    const tiles = Object.values(entry.tiles || {});
+    return tiles.length ? tiles.map((tile) => tile.layer) : [`scale_${scaleKey}`];
+  }
+
+  /**
+   * The archive of a scale holding a column, which is also its layer's name.
+   *
+   * The exporter tiles each scale in groups of columns, so that no feature
+   * carries so many values that the zoomed out tiles must drop it; the group
+   * a column is in is recorded in indicators.json.  Every archive holds the
+   * area ids and context columns (population), so any will do for those.
+   */
+  sourceFor(scaleKey, column = null) {
+    const entry = this.dataset.manifest.scales[scaleKey] || {};
+    const tiles = entry.tiles || {};
+    const groups = Object.keys(tiles);
+    if (!groups.length) return `scale_${scaleKey}`;
+    const group = ((this.dataset.indicators || {}).column_group || {})[column];
+    return tiles[group && tiles[group] ? group : groups[0]].layer;
+  }
+
+  /** Point the choropleth at the pane's current scale, and the column's archive. */
+  setScale(scaleKey, column = null) {
     const map = this.map;
     if (!map || !map.getLayer('choropleth')) return;
-    const source = `scale_${scaleKey}`;
+    const source = this.sourceFor(scaleKey, column);
     if (!map.getSource(source)) return;
     // MapLibre cannot re-point a layer at another source, so changing scale
-    // means replacing the layer.  Only do it when the scale actually changed.
-    if (this.currentScale === scaleKey) return;
-    this.currentScale = scaleKey;
+    // (or the archive a column is in) means replacing the layer.  Only do it
+    // when the source actually changed.
+    if (this.currentSource === source) return;
+    this.currentSource = source;
     for (const id of ['choropleth', 'choropleth-outline', 'choropleth-selected']) {
       // order matters: the replacement must go back beneath the overlays
       const before = this.firstOverlayId();
@@ -461,6 +493,62 @@ export class Pane {
       map.removeLayer(id);
       map.addLayer({ ...definition, paint }, before);
     }
+  }
+
+  /**
+   * Draw a regular grid as a smooth surface, where the pane asks for one.
+   *
+   * The cells stay on the map, transparent, so an area can still be clicked;
+   * the image is recomputed only when what it shows has changed.
+   */
+  renderSmooth(resolved, classification, drawable) {
+    const map = this.map;
+    const raster = (this.dataset.manifest.scales[this.config.scale] || {}).raster;
+    const on = Boolean(this.config.overlays.smooth && raster && drawable
+      && resolved && classification && classification.kind === 'classes');
+    if (!on) {
+      hideSurface(map);
+      return;
+    }
+    map.setPaintProperty('choropleth', 'fill-opacity', 0);
+    map.setLayoutProperty('choropleth-outline', 'visibility', 'none');
+    // a score computed from custom weights is computed here too, cell by cell
+    const uli = this.app.uli;
+    const computed = uli && String(resolved.column).startsWith('~')
+      ? (props) => {
+        const out = uli.values(props);
+        return out ? out[resolved.column] : null;
+      }
+      : null;
+    const inputs = computed ? resolved.columns : [resolved.column];
+    const key = JSON.stringify([
+      this.dataset.slug, this.config.scale, resolved.column, inputs,
+      classification.classes.map((c) => [c.min, c.max, c.color]),
+      state.isolated, computed ? state.uli : null,
+    ]);
+    if (key === this.smoothKey) {
+      if (map.getLayer('smooth')) map.setLayoutProperty('smooth', 'visibility', 'visible');
+      return;
+    }
+    this.smoothKey = key;
+    this.smoothToken = (this.smoothToken || 0) + 1;
+    const token = this.smoothToken;
+    surfaceImage({
+      dataset: this.dataset,
+      raster,
+      classification,
+      column: resolved.column,
+      inputs,
+      computed,
+      isolated: state.isolated,
+    }).then((url) => {
+      // a later request has superseded this one, or the reader turned it off
+      if (token !== this.smoothToken || !url || !this.config.overlays.smooth) return;
+      showSurface(map, url, raster.corners);
+    }).catch((error) => {
+      this.smoothKey = null;
+      console.warn('smooth surface', error);
+    });
   }
 
   firstOverlayId() {
@@ -497,6 +585,7 @@ export class Pane {
         }
       }
       this.setNotice(usable && showFill ? '' : (usable ? '' : t('notAvailable')));
+      this.renderSmooth(resolved, classification, usable && showFill);
     }
     // outline the area the profile is describing, on the pane it was chosen in
     if (map.getLayer('choropleth-selected')) {
@@ -647,7 +736,7 @@ export class Pane {
         rows.push(
           `<tr title="${(described.en || '').replace(/"/g, '&quot;')}">
             <th>${heading}</th>
-            <td>${this.formatValue(value, resolved)}</td></tr>`,
+            <td>${this.formatValue(value, resolved, properties, column)}</td></tr>`,
         );
       });
     }
@@ -672,9 +761,19 @@ export class Pane {
       ${assumed ? `<div class="popup-note">${assumed}</div>` : ''}</div>`;
   }
 
-  /** A value with the unit its indicator is measured in. */
-  formatValue(value, resolved) {
-    if (value === undefined || value === null) return t('noData');
+  /**
+   * A value with the unit its indicator is measured in.  A distance missing
+   * because nothing was found within the distance searched says so.
+   */
+  formatValue(value, resolved, properties = {}, column = null) {
+    if (value === undefined || value === null) {
+      const censored = ((this.dataset.indicators || {}).censored || {})[column];
+      if (censored && censored.access && Number(properties[censored.access]) === 0) {
+        return t('censoredBeyond').replace('{d}',
+          `${integer(censored.distance)} m`);
+      }
+      return t('noData');
+    }
     const units = (resolved.units || '').toLowerCase();
     const n = Number(value);
     if (units.includes('percent')) {

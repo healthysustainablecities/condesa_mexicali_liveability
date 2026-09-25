@@ -85,6 +85,7 @@ GLOBALS = {
     'setInterval', 'requestAnimationFrame', 'console', 'document', 'window',
     'maplibregl', 'pmtiles', 'URLSearchParams', 'history', 'location', 'import',
     'RegExp', 'Intl', 'AbortController', 'CustomEvent', 'Blob', 'URL',
+    'Float32Array', 'Int32Array', 'Uint8ClampedArray',
     'of', 'in', 'do', 'else', 'yield', 'delete', 'void', 'instanceof',
 }
 def strip_prose(src):

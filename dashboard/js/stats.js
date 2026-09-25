@@ -20,7 +20,7 @@
 // class shares at one band showed only a slice of it -- mostly empty classes
 // either side of a spike.  The legend beneath is then the map's key alone.
 
-import { classOf } from './choropleth.js';
+import { BEYOND, classOf } from './choropleth.js';
 import { relationSymbol } from './legend.js';
 import { state, update } from './state.js';
 import { label, number, t } from './strings.js';
@@ -103,12 +103,19 @@ export function renderDistribution(
   const names = panes.map((pane, i) => regionName(datasets[i], pane));
   const classes = classification.classes;
 
-  // one row of shares per region, in class order
+  // one row of shares per region, in class order, with -- for a censored
+  // distance -- the share with nothing within the distance searched last
+  const censored = classification.censored;
   const perRegion = panes.map((pane, i) => {
     const entry = statsEntries[i];
     const stats = entry && entry.columns
       ? entry.columns[classification.column] : null;
-    return stats && stats.class_shares ? stats.class_shares : null;
+    if (!stats) return null;
+    const shares = stats.class_shares
+      || (censored && stats.beyond !== undefined
+        ? classification.classes.map(() => 0) : null);
+    if (!shares) return null;
+    return censored ? [...shares, stats.beyond || 0] : shares;
   });
   if (perRegion.every((shares) => !shares)) {
     element.innerHTML = '';
@@ -125,12 +132,18 @@ export function renderDistribution(
   const ceiling = axisCeiling(peak);
   const target = classification.targetIndex;
 
-  const groups = classes.map((cls, i) => {
+  const columns = censored
+    ? [...classes, {
+      color: BEYOND,
+      beyond: t('censoredBeyond').replace('{d}', `${number(censored.distance, 0)} m`),
+    }]
+    : classes;
+  const groups = columns.map((cls, i) => {
     const bars = perRegion.map((shares, r) => {
       const value = shares ? shares[i] : null;
       const height = Math.max(1, ((value || 0) / ceiling) * PLOT_H);
       const title = `${names[r] ? `${names[r]} · ` : ''}${
-        number(value, 1)}%`;
+        cls.beyond ? `${cls.beyond} · ` : ''}${number(value, 1)}%`;
       return `<div class="histo-bar"
            style="height:${height.toFixed(1)}px;background:${cls.color};${
   r > 0 ? 'opacity:.55' : ''}"

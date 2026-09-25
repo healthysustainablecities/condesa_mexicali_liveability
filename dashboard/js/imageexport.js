@@ -105,11 +105,43 @@ export async function composeView({ panes, datasets, resolved, classification,
   const maps = panes.map((pane) => pane.map).filter(Boolean);
   if (!maps.length || !resolved) return null;
 
+  // compared maps are composed side by side at equal size, split at half,
+  // however the splitter divides the screen: each map's container is given
+  // the same size while it is drawn, and its own back afterwards
+  const containers = maps.map((map) => map.getContainer());
+  const saved = containers.map((c) => [c.style.width, c.style.height, c.style.flex]);
+  if (maps.length > 1) {
+    const widths = containers.map((c) => c.clientWidth);
+    const equal = Math.floor(widths.reduce((a, b) => a + b, 0) / maps.length);
+    const tall = Math.max(...containers.map((c) => c.clientHeight));
+    containers.forEach((c) => {
+      c.style.flex = 'none';
+      c.style.width = `${equal}px`;
+      c.style.height = `${tall}px`;
+    });
+    maps.forEach((map) => map.resize());
+  }
+  try {
+    return await drawView({ panes, datasets, resolved, classification, vocab, maps });
+  } finally {
+    if (maps.length > 1) {
+      containers.forEach((c, i) => {
+        [c.style.width, c.style.height, c.style.flex] = saved[i];
+      });
+      maps.forEach((map) => map.resize());
+    }
+  }
+}
+
+async function drawView({ panes, datasets, resolved, classification, vocab, maps }) {
   // preserveDrawingBuffer keeps the buffer from being cleared, but its contents
   // are only reliably readable straight after a frame — reading from an idle
   // map returns a blank canvas.  Force a render on each map and read inside it.
+  // (never waiting long: a map that cannot draw -- a hidden tab -- must not
+  // leave the panes at their export size)
   await Promise.all(maps.map((map) => new Promise((resolve) => {
-    map.once('render', resolve);
+    const timer = setTimeout(resolve, 4000);
+    map.once('render', () => { clearTimeout(timer); resolve(); });
     map.triggerRepaint();
   })));
   const canvases = maps.map((map) => map.getCanvas());

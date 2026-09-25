@@ -20,9 +20,17 @@ const PAD = 6;
  *
  * `element` is a selector to spotlight; omit it for a centred step. `before`
  * runs prior to showing the step and may change application state — that is
- * what makes this a demonstration rather than a description.
+ * what makes this a demonstration rather than a description.  `only` limits a
+ * step to one type of dashboard: the general explorer's indicator controls do
+ * not exist in a composite index's own dashboard, nor its profile in the
+ * general one.
  */
 function steps(app) {
+  const mode = app.indexMode() ? 'composite' : 'general';
+  return allSteps(app).filter((step) => !step.only || step.only === mode);
+}
+
+function allSteps(app) {
   return [
     {
       title: { es: 'Explorador de indicadores', en: 'Indicator explorer' },
@@ -37,32 +45,35 @@ function steps(app) {
     },
     {
       element: '#profile',
+      only: 'composite',
       title: {
         es: 'El Índice de entornos vivibles',
         en: 'The Urban Liveability Index',
       },
       text: {
-        es: 'El explorador abre con el índice compuesto (provisional). Cada '
-          + 'pétalo es un indicador, del color de su dominio: crece hacia '
-          + 'fuera del anillo punteado (0, la referencia) donde el indicador '
-          + 'supera su promedio, y hacia dentro donde queda por debajo. Haga '
-          + 'clic en un pétalo para mapearlo, en un dominio para ver sus '
-          + 'componentes, o en un área del mapa para ver su propio perfil. La '
-          + 'franja inferior muestra por qué el índice no es un simple '
-          + 'promedio: se resta una penalización cuando los dominios están '
-          + 'desequilibrados. El engranaje de la esquina abre la configuración: '
-          + 'la caminabilidad ajustada por el calor, y la importancia que usted '
-          + 'da a cada dominio.',
-        en: 'The explorer opens on the (provisional) composite index. Each '
-          + 'petal is an indicator, in its domain’s colour: it grows outward '
-          + 'from the dashed ring (0, the reference) where the indicator does '
-          + 'better than its average, and inward where it falls short. Click '
-          + 'a petal to map it, a domain to see its components, or an area on '
-          + 'the map to see its own profile. The strip below shows why the '
-          + 'index is not a simple average: a penalty is subtracted when the '
-          + 'domains are out of balance. The cog in the corner opens the '
-          + 'settings: walkability adjusted for heat, and the importance you '
-          + 'give each domain.',
+        es: 'El gráfico sigue el modelo conceptual: el índice al centro, luego '
+          + 'los dominios y, hacia fuera, un pétalo por indicador, del color '
+          + 'de su dominio. Un pétalo crece hacia fuera del anillo punteado '
+          + '(0, la referencia) donde el indicador supera su promedio, y hacia '
+          + 'dentro donde queda por debajo; pase el cursor para ver el valor '
+          + 'del indicador en sus unidades. Haga clic en un pétalo para '
+          + 'mapearlo, en un dominio para ver sus componentes, o '
+          + 'en un área del mapa para ver su propio perfil. La franja inferior '
+          + 'muestra por qué el índice no es un simple promedio: se resta una '
+          + 'penalización cuando los dominios están desequilibrados. Debajo, '
+          + 'elija la caminabilidad con o sin atenuación por confort térmico; '
+          + 'el engranaje abre la configuración.',
+        en: 'The chart follows the conceptual model: the index at the centre, '
+          + 'then the domains and, outwards, one petal per indicator, in its '
+          + 'domain’s colour. A petal grows outward from the dashed ring (0, '
+          + 'the reference) where the indicator does better than its average, '
+          + 'and inward where it falls short; hover to see the indicator’s '
+          + 'value in its own units. Click a petal to '
+          + 'map it, a domain to see its components, or an area on the map to '
+          + 'see its own profile. The strip below shows why the index is not a '
+          + 'simple average: a penalty is subtracted when the domains are out '
+          + 'of balance. Beneath it, choose walkability with or without '
+          + 'thermal comfort attenuation; the cog opens the settings.',
       },
       before: () => app.showFeatured(),
     },
@@ -79,6 +90,7 @@ function steps(app) {
     },
     {
       element: '#themeSel',
+      only: 'general',
       title: { es: 'Empiece por el tema', en: 'Start with the theme' },
       text: {
         es: 'Los mismos temas que usan las tarjetas de intervención del '
@@ -89,6 +101,7 @@ function steps(app) {
     },
     {
       element: '#measureSel',
+      only: 'general',
       title: { es: 'Medida y red', en: 'Measure and network' },
       text: {
         es: '<b>Acceso (%)</b> colorea cada área por la banda de distancia '

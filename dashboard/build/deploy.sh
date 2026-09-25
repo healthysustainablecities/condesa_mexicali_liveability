@@ -18,13 +18,34 @@ for slug in "$@"; do
   [ -d "$src" ] || { echo "no export at $src"; exit 1; }
   mkdir -p "$dest"
   echo "== $slug -> data/$slug"
-  for f in manifest.json indicators.json stats.json \
+  for f in manifest.json indicators.json stats.json distributions.json \
            data_dictionary.csv data_dictionary.xlsx data_dictionary.pdf; do
     [ -e "$src/$f" ] && cp "$src/$f" "$dest/$f"
   done
   # each language's conceptual model figure, where the region configures one
   cp "$src"/conceptual_model_* "$dest/" 2>/dev/null || true
-  cp "$WORK/${slug}"_*.pmtiles "$dest/" 2>/dev/null || true
+  # a regular grid's raster, for the smooth surface; earlier ones removed
+  rm -f "$dest"/*.i32 "$dest"/*.f32
+  cp "$src"/*.i32 "$src"/*.f32 "$dest/" 2>/dev/null || true
+  # Only the archives this dataset's manifest names: a glob on the slug would
+  # also take another dataset's (mexicali_* matches mexicali_general_*) and
+  # archives of an earlier layout (one per scale, before tile groups).  Any
+  # archive already in the site that the manifest no longer names is removed.
+  archives=$(python - "$src/manifest.json" "$slug" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1], encoding='utf-8'))
+slug = sys.argv[2]
+names = ['context', 'network']
+for key, scale in m['scales'].items():
+    tiles = scale.get('tiles') or {}
+    names += [t['layer'] for t in tiles.values()] or [f'scale_{key}']
+print(' '.join(f'{slug}_{n}.pmtiles' for n in names))
+PY
+)
+  rm -f "$dest"/*.pmtiles
+  for f in $archives; do
+    [ -e "$WORK/$f" ] && cp "$WORK/$f" "$dest/"
+  done
   ls -lh "$dest"
 done
 
@@ -45,6 +66,8 @@ for slug in sorted(os.listdir(root)):
         m = json.load(f)
     datasets.append({
         'slug': m['slug'],
+        # general or composite: the site shows datasets of one type at a time
+        'type': m.get('type') or 'general',
         'label': m.get('label') or {'en': m.get('name')},
         'codename': m.get('codename'),
         'year': m.get('year'),

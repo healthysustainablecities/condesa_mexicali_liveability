@@ -32,6 +32,12 @@ const indicators = read('indicators.json');
 const stats = read('stats.json');
 const vocab = new Vocabulary(indicators);
 
+// a composite index's own dashboard carries the index alone: no themes, no
+// interventions, no destination layers
+const composite = manifest.type === 'composite';
+// a composite or combined dataset carries the index's own outputs
+const indexed = ['composite', 'combined'].includes(manifest.type);
+
 let failures = 0;
 const check = (ok, message) => {
   if (!ok) {
@@ -133,7 +139,9 @@ console.log(`  ${bandsChecked} banded family/network combinations, all keyed`);
 section('coerce moves off a combination that is not available');
 // every scale here happens to carry every column, so the reduced set is
 // synthetic: it is the behaviour that matters, not that this data triggers it
-{
+if (!vocab.family('blue_space')) {
+  console.log('  no blue_space family in this dataset');
+} else {
   const family = vocab.family('blue_space');
   const blocked = new Set(
     [...everywhere].filter((c) => !family.columns.includes(c)),
@@ -186,11 +194,17 @@ section('classes cover the data, and the chart lines up with the legend');
       const breaks = indicators.breaks[column];
       if (!breaks) continue;
       checked += 1;
-      if (breaks.kind === 'classes') {
+      // every area beyond a censored distance's search: nothing to range over
+      if (breaks.kind === 'classes' && st.n) {
         const low = breaks.edges[0];
         const high = breaks.edges[breaks.edges.length - 1];
         const reaches = breaks.open_low || low <= st.min + 1e-9;
-        const spans = breaks.open_high || high >= st.max - 1e-9;
+        // a censored distance is classed by the bands searched: the odd value
+        // a little beyond (a point along a long edge from its node) is
+        // clipped into the top class by design
+        const censored = (indicators.censored || {})[column];
+        const spans = breaks.open_high || Boolean(censored)
+          || high >= st.max - 1e-9;
         if (!(reaches && spans)) {
           outOfRange.push(
             `${scaleKey}/${column}: data ${st.min}-${st.max} outside `
@@ -206,8 +220,10 @@ section('classes cover the data, and the chart lines up with the legend');
           + `${countOf(breaks)} classes`,
         );
       }
+      // the population with nothing within a censored distance's search is
+      // a share of its own, beside the classes
       const total = st.class_shares.reduce((a, b) => a + b, 0)
-        + (st.unclassed || 0);
+        + (st.unclassed || 0) + (st.beyond || 0);
       if (Math.abs(total - 100) > 1.5) {
         unbalanced.push(
           `${scaleKey}/${column}: shares sum to ${total.toFixed(1)}`,
@@ -227,7 +243,9 @@ section('classes cover the data, and the chart lines up with the legend');
 
 // ---------------------------------------------------------------------------
 section('configured breaks came through as configured');
-{
+if (composite) {
+  console.log('  a composite index dashboard: none of the general indicators');
+} else {
   const expected = {
     local_walkability: { open_low: true, open_high: true, n: 8 },
     local_daily_living: { open_low: false, open_high: false, n: 3 },
@@ -378,7 +396,9 @@ section('the map paints the classes the chart counts');
 
 // ---------------------------------------------------------------------------
 section('hidden variables really are gone');
-{
+if (composite) {
+  console.log('  a composite index dashboard: none of the general indicators');
+} else {
   const exposed = new Set(indicators.families.flatMap((f) => f.columns));
   const gone = [
     'urban_heat_subnational_hdi', 'urban_heat_infant_mortality_rate',
@@ -396,7 +416,9 @@ section('hidden variables really are gone');
 
 // ---------------------------------------------------------------------------
 section('every family has a theme, a colour and a Spanish label');
-{
+if (composite) {
+  console.log('  a composite index dashboard: no themes');
+} else {
   const themes = new Map((indicators.themes || []).map((t) => [t.id, t]));
   check(themes.size > 0, 'themes are declared');
   const hex = /^#[0-9a-f]{6}$/i;
@@ -434,7 +456,9 @@ section('every family has a theme, a colour and a Spanish label');
 
 // ---------------------------------------------------------------------------
 section('interventions are matched to themes that exist');
-{
+if (composite) {
+  console.log('  a composite index dashboard: no interventions');
+} else {
   const ids = new Set((indicators.themes || []).map((t) => t.id));
   const entries = indicators.interventions || [];
   check(entries.length > 0, 'interventions were parsed');
@@ -467,7 +491,9 @@ section('interventions are matched to themes that exist');
 
 // ---------------------------------------------------------------------------
 section('access is one distance, stated plainly');
-{
+if (composite) {
+  console.log('  a composite index dashboard: none of the general indicators');
+} else {
   const { legendTitle, legendDirection } = await module_('legend.js');
   const available = scaleColumns('manzanas');
   const at = (distance) => vocab.resolve(vocab.coerce(
@@ -642,7 +668,7 @@ section('composite indices carry their structure, and share one scale');
       check(
         edges.length % 2 === 0
           && Math.abs((edges[middle - 1] + edges[middle]) / 2
-            - (c.reference_value || 100)) < 1e-9,
+            - (c.reference_value ?? 100)) < 1e-9,
         `${family.id}: the reference is the middle of the middle class `
         + `(${edges.join(', ')})`,
       );
@@ -666,6 +692,40 @@ section('composite indices carry their structure, and share one scale');
           `${family.id}: domain ${domain.name} has a fill and stroke colour`);
       }
     }
+    // indicators listed once, each domain listing its members with their
+    // shares of it: an indicator's shares sum to one, whatever domains it
+    // counts towards, and the effective weights of those scored to one
+    if (Array.isArray(c.indicators)) {
+      const ids = c.indicators.map((i) => i.id);
+      check(new Set(ids).size === ids.length, `${family.id}: indicators listed once each`);
+      check(JSON.stringify(c.order || []) === JSON.stringify(ids),
+        `${family.id}: indicators listed in the order presented`);
+      const shares = new Map();
+      for (const domain of c.domains) {
+        for (const member of domain.indicators) {
+          check(ids.includes(member.id),
+            `${family.id}: ${domain.name} member ${member.id} is an indicator of the index`);
+          shares.set(member.id, (shares.get(member.id) || 0) + Number(member.share || 1));
+        }
+        if (domain.scored === false) {
+          check(!domain.column && !domain.indicators.length,
+            `${family.id}: unscored domain ${domain.name} has no score and no members`);
+        }
+      }
+      for (const [id, total] of shares) {
+        check(Math.abs(total - 1) < 1e-6, `${family.id}: ${id}'s shares sum to one (${total})`);
+      }
+      const effective = c.indicators.filter((i) => i.active !== false && !i.dropped)
+        .map((i) => Number(i.effective_weight));
+      check(effective.every(Number.isFinite)
+        && Math.abs(effective.reduce((a, b) => a + b, 0) - 1) < 1e-4,
+      `${family.id}: effective weights of the indicators scored sum to one`);
+      const sharedCount = c.indicators.filter((i) =>
+        Object.keys(i.domains || {}).length > 1).length;
+      console.log(`  ${family.id}: ${ids.length} indicators, ${sharedCount} shared by domains; `
+        + `effective weights ${(Math.min(...effective) * 100).toFixed(1)}-`
+        + `${(Math.max(...effective) * 100).toFixed(1)}%`);
+    }
     const lensed = c.domains.flatMap((d) => d.indicators).filter((i) => i.lens).length;
     const coloured = c.domains.filter((d) => d.colour).length;
     console.log(`  ${family.id}: ${coloured} domains coloured, ${lensed} indicators with a lens`);
@@ -680,7 +740,7 @@ section('composite indices carry their structure, and share one scale');
 section('the index settings: variants read exported scores, weights recompute');
 {
   const {
-    activeIndex, ampi, defaultSettings, variantFor, variantOptions,
+    activeIndex, ampi, defaultSettings, referenceOf, variantFor, walkabilityOptions,
   } = await module_('uli.js');
   const composites = indicators.families.filter((f) => f.composite);
   for (const family of composites) {
@@ -713,19 +773,39 @@ section('the index settings: variants read exported scores, weights recompute');
       // every variant is reachable from the settings, and resolves to itself
       const settings = {
         ...defaultSettings(),
-        walk: variant.walk,
-        heat: (variant.heat || []).join(''),
-        form: variant.form || 'additive',
+        attenuation: variant.attenuation !== false,
       };
       check((variantFor(c, settings) || {}).name === variant.name,
         `${family.id}: the settings reach ${variant.name}`);
       check(activeIndex(c, settings).remap(c.columns.index) === variant.columns.index,
         `${family.id}: ${variant.name} is mapped from its own index column`);
     }
-    const options = variantOptions(c);
-    console.log(`  ${family.id}: ${variants.length} variants; walk ${
-      options.walks.join('/')} m; heat ${options.heats.map((h) => h || 'none').join('/')}; `
-      + `forms ${options.forms.join('/')}`);
+    const options = walkabilityOptions(c);
+    check(options.length < 2 || options[0].base,
+      `${family.id}: the default walkability option is the published index`);
+    console.log(`  ${family.id}: ${variants.length} variants; walkability ${
+      options.map((o) => (o.attenuation ? 'attenuated' : 'plain')).join(' / ')}`);
+
+    // an indicator listed but not counted says why, and is counted by the
+    // variant that activates it
+    for (const domain of c.domains) {
+      for (const indicator of domain.indicators) {
+        if (indicator.active !== false) continue;
+        check(indicator.inactive_reason && indicator.inactive_reason.es
+          && indicator.inactive_reason.en,
+        `${family.id}: inactive ${indicator.id} says why, in both languages`);
+        const by = variants.find((v) => (v.activates || []).includes(indicator.id));
+        check(by, `${family.id}: a variant activates ${indicator.id}`);
+        if (by) {
+          const shown = activeIndex(c, { ...defaultSettings(),
+            attenuation: by.attenuation !== false }).structure;
+          const again = shown.domains.flatMap((d) => d.indicators)
+            .find((i) => i.id === indicator.id);
+          check(again && again.active,
+            `${family.id}: ${by.name} counts ${indicator.id}`);
+        }
+      }
+    }
 
     // custom weights: a domain of one indicator is that indicator's score
     // exactly, and the index recomputed at equal weights is near the published
@@ -734,6 +814,8 @@ section('the index settings: variants read exported scores, weights recompute');
     const weights = { ...defaultSettings(),
       domains: { [firstDomain.name]: 2 } };
     const custom = activeIndex(c, weights);
+    // scores reported relative to the reference are aggregated with it at 100
+    const offset = 100 - referenceOf(c);
     check(custom.custom && custom.expression(custom.remap(c.columns.index)),
       `${family.id}: custom weights give a paint expression for the index`);
     for (const [key, values] of Object.entries(manifest.region_values || {})) {
@@ -745,18 +827,119 @@ section('the index settings: variants read exported scores, weights recompute');
             `${family.id}: ${key} ${domain.name} is its one indicator's score`);
         }
       }
+      // a domain's recomputed score weights each member by its share of it
+      for (const domain of custom.structure.domains) {
+        if (!domain.column) continue;
+        const inputs = domain.indicators.filter((i) => i.column && !i.dropped && i.active);
+        const direct = ampi(
+          inputs.map((i) => (values[i.column] === undefined ? null
+            : Number(values[i.column]) + offset)),
+          inputs.map((i) => (Number(i.weight) || 1) * (Number(i.share) || 1)),
+        );
+        if (direct && Number.isFinite(scored[domain.column])) {
+          check(Math.abs(direct.index - offset - scored[domain.column]) < 1e-9,
+            `${family.id}: ${key} ${domain.name} recomputed with its members' shares`);
+        }
+      }
       const equal = ampi(
-        c.domains.filter((d) => d.column).map((d) => Number(values[d.column])),
+        c.domains.filter((d) => d.column).map((d) => Number(values[d.column]) + offset),
         c.domains.filter((d) => d.column).map(() => 1),
       );
       const published = Number(values[c.columns.index]);
       if (equal && Number.isFinite(published)) {
-        check(Math.abs(equal.index - published) < 5,
-          `${family.id}: ${key} index of domain averages (${equal.index.toFixed(2)}) `
+        check(Math.abs(equal.index - offset - published) < 5,
+          `${family.id}: ${key} index of domain averages (${(equal.index - offset).toFixed(2)}) `
           + `near the published (${published.toFixed(2)})`);
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+section('every column is tiled, in groups narrow enough to keep at every zoom');
+{
+  const groups = indicators.column_group || {};
+  for (const [key, scale] of Object.entries(manifest.scales)) {
+    const tiles = scale.tiles || {};
+    check(Object.keys(tiles).length > 0, `${key}: tiled in groups`);
+    const tiled = new Set(Object.values(tiles).flatMap((t) => t.columns));
+    const context = new Set(['pop_est', 'area_sqkm', 'pop_per_sqkm',
+      'intersection_count', 'intersections_per_sqkm']);
+    const untiled = scale.columns.filter((c) => !tiled.has(c) && !context.has(c));
+    check(untiled.length === 0,
+      `${key}: columns in no tile group: ${untiled.slice(0, 4).join(', ')}`);
+    for (const [group, tile] of Object.entries(tiles)) {
+      const stray = tile.columns.filter((c) => groups[c] !== group);
+      check(stray.length === 0,
+        `${key}: ${group} holds columns recorded in another group: ${stray.slice(0, 3)}`);
+      check(fs.existsSync(path.join(ROOT, 'data', slug, `${slug}_${tile.layer}.pmtiles`)),
+        `${key}: ${tile.layer} archive is deployed`);
+    }
+  }
+  const widest = Math.max(...Object.values(manifest.scales).flatMap((s) =>
+    Object.values(s.tiles || {}).map((t) => t.columns.length)));
+  console.log(`  ${Object.keys(manifest.scales).length} scales; widest tile group `
+    + `${widest} columns`);
+}
+
+// ---------------------------------------------------------------------------
+section('a composite dashboard compares its regions, and explains attenuation');
+if (!indexed) {
+  console.log('  a general dashboard');
+} else {
+  const file = path.join(ROOT, 'data', slug, manifest.distributions || '');
+  check(manifest.distributions && fs.existsSync(file),
+    'distributions.json is deployed');
+  if (manifest.distributions && fs.existsSync(file)) {
+    const d = read(manifest.distributions);
+    const c = indicators.families.find((f) => f.composite).composite;
+    for (const key of Object.keys(manifest.regions)) {
+      const entry = (d.regions[key] || {})[c.columns.index];
+      check(entry && entry.density.length === d.points,
+        `distributions for ${key} on ${c.columns.index}`);
+      if (entry) {
+        const step = (d.x[c.columns.index][1] - d.x[c.columns.index][0]) / (d.points - 1);
+        const area = entry.density.reduce((a, b) => a + b, 0) * step;
+        check(Math.abs(area - 1) < 0.1,
+          `${key}: the density integrates to about 1 (${area.toFixed(3)})`);
+        console.log(`  ${key.padEnd(10)} ${entry.n} areas, weight ${
+          Math.round(entry.weight)}, mean ${entry.mean}`);
+      }
+    }
+  }
+  const att = manifest.attenuation;
+  const heat = att && att.heat ? Object.values(att.heat)[0] : null;
+  check(heat && heat.bounds && heat.bounds[1] > heat.bounds[0],
+    'walkability attenuation carries its thermal comfort bounds');
+  if (heat && heat.bounds) {
+    console.log(`  attenuation λ ${att.lambda}, P${att.percentiles.join('-P')} `
+      + `${heat.bounds.map((b) => b.toFixed(2)).join(' – ')}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('a regular grid is written as a raster, for the smooth surface');
+{
+  let rasters = 0;
+  for (const [key, scale] of Object.entries(manifest.scales)) {
+    const raster = scale.raster;
+    if (!raster) continue;
+    rasters += 1;
+    const file = (name) => path.join(ROOT, 'data', slug, name);
+    check(fs.existsSync(file(raster.index))
+      && fs.statSync(file(raster.index)).size === raster.areas * 4,
+    `${key}: the cell index holds one cell per area`);
+    check(raster.areas === scale.features, `${key}: raster areas === features`);
+    for (const [group, entry] of Object.entries(raster.groups)) {
+      check(fs.existsSync(file(entry.file))
+        && fs.statSync(file(entry.file)).size === raster.areas * 4 * entry.columns.length,
+      `${key}: ${group} values hold every column for every area`);
+    }
+    check(raster.corners.length === 4, `${key}: four corners`);
+    console.log(`  ${key}: ${raster.nx} x ${raster.ny} cells of ${raster.cell} m, `
+      + `${Object.keys(raster.groups).length} groups`);
+  }
+  if (!rasters) console.log('  no regular grid in this dataset');
 }
 
 // ---------------------------------------------------------------------------

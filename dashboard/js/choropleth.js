@@ -66,6 +66,10 @@ export function rampAt(stops, t) {
   return lerpHex(stops[i], stops[i + 1], x - i);
 }
 
+// An area measured, with nothing found within the distance searched: darker
+// than "no data", which it is not, and apart from the ramp, whose classes it
+// lies beyond.
+export const BEYOND = '#6e6a63';
 export const NO_DATA = '#c9c4bd';
 export const DIM = '#d9d5d0';
 export const LTS_COLORS = { 1: '#1a9850', 2: '#a6d96a', 3: '#fdae61', 4: '#d73027' };
@@ -218,7 +222,15 @@ function valueExpression(classification) {
 /** Fill colour for the whole layer, before any legend isolation. */
 export function fillExpression(classification) {
   const value = valueExpression(classification);
-  const expression = ['case', ['==', value, SENTINEL], NO_DATA];
+  const expression = ['case'];
+  // a distance missing because nothing was found within the distance
+  // searched, where access at the largest band is 0
+  const censored = classification.censored;
+  if (censored && censored.access) {
+    expression.push(['all', ['==', value, SENTINEL],
+      ['==', ['coalesce', ['get', censored.access], -1], 0]], BEYOND);
+  }
+  expression.push(['==', value, SENTINEL], NO_DATA);
   if (classification.kind === 'categories') {
     classification.classes.forEach((cls) => {
       expression.push(['==', value, cls.value], cls.color);

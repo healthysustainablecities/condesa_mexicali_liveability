@@ -59,23 +59,38 @@ export function showingMeasure(resolved) {
  * The theme dot echoes the printed workshop cards, where an intervention card
  * carries a coloured dot for each theme it belongs to.
  */
-export function renderShowing(element, resolved, vocab, lang, theme, onInfo) {
+export function renderShowing(
+  element, resolved, vocab, lang, theme, onInfo, index = null,
+) {
   if (!resolved) {
     element.innerHTML = '';
     return;
   }
-  const dot = theme
+  // A composite index's own dashboard introduces the index itself, by its
+  // name and definition, in the place of the controls it no longer needs:
+  // what is mapped of it is named beneath the index in the profile's card.
+  const colour = index && index.colour
+    ? (typeof index.colour === 'string' ? index.colour : index.colour.fill)
+    : null;
+  let dot = theme
     ? `<span class="theme-dot" style="background:${theme.color}"
              title="${label(theme.label, theme.id)}"></span>`
     : '';
+  if (index) {
+    dot = colour ? `<span class="theme-dot" style="background:${colour}"></span>` : '';
+  }
+  const title = index
+    ? label(index.label, index.name) : showingTitle(resolved, vocab);
+  const body = index && index.description
+    ? label(index.description, '') : showingSentence(resolved, vocab, lang);
   // the "i" sits with the indicator it explains, not in the app header
   element.innerHTML = `
     <div class="showing-head">
-      ${dot}<span class="showing-title">${showingTitle(resolved, vocab)}</span>
+      ${dot}<span class="showing-title">${title}</span>
       <button class="btn icon serif" id="infoBtn"
               title="${t('info')}" aria-label="${t('info')}">i</button>
     </div>
-    <div class="showing-body">${showingSentence(resolved, vocab, lang)}</div>`;
+    <div class="showing-body">${body}</div>`;
   element.hidden = false;
   element.querySelector('#infoBtn').addEventListener('click', onInfo);
 }
