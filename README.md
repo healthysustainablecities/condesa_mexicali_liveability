@@ -2,7 +2,7 @@
 
 Spatial liveability indicators for Mexicali, Baja California — including the
 Condesa development in the south-east — feeding a composite liveability index
-and the **Reimagina Urbana** platform.
+and the **Reimagina Urbano** platform.
 
 Calculation is shared across several teams. This repository holds what they
 need in order to deliver results that fit together.

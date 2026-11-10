@@ -4,7 +4,7 @@
 
 A suite of spatial liveability indicators for Mexicali, Baja California, and
 from them a composite liveability index. Outputs also supply layers to the
-**Reimagina Urbana** platform.
+**Reimagina Urbano** platform.
 
 The indicator set was assembled from a review of the liveability literature,
 classified by domain, subdomain, category and subject, and narrowed to
@@ -92,7 +92,7 @@ temperate, high-income cities. Where the transfer to a city with summer maxima
 above 45 °C is doubtful, it is recorded in `rationale.arid_context`.
 
 **Documented data sources.** For every dataset: citation, URL, date retrieved,
-licence (and whether it may be redistributed via Reimagina Urbana), spatial
+licence (and whether it may be redistributed via Reimagina Urbano), spatial
 resolution, temporal coverage, and whether it covers Condesa.
 
 **Natural units.** Values are delivered unnormalised and not reverse-coded,
