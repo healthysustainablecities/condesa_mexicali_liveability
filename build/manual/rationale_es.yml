@@ -1,0 +1,44 @@
+# Draft Spanish translations of the indicator register's English rationale
+# (indicator_register.csv, column reason_draft), keyed by indicator_id.  The
+# manual marks these as draft translations; correct them here.  An id absent
+# from this file is shown in English.
+---
+'10': La cercanía a recursos hídricos disponibles es un indicador crítico de habitabilidad en entornos urbanos áridos, pues el acceso al agua es fundamental para la salud, el confort y la supervivencia humanas.
+'11': La presencia de panaderías y servicios de alimentos locales contribuye a la comodidad de la vida urbana y atiende las necesidades funcionales cotidianas de los residentes.
+'26': La cercanía a paradas de autobús mejora la accesibilidad a los equipamientos y servicios de la ciudad, y actúa como motor importante del crecimiento urbano y de la calidad de vida de los residentes.
+'46': Los centros comunitarios de usos múltiples ofrecen oportunidades importantes de interacción social y conexión comunitaria, vitales para el bienestar mental y social.
+'58': Los centros culturales son nodos importantes de actividad social y cultural que fortalecen la identidad comunitaria y promueven el bienestar psicológico de los residentes.
+'62': Diseñar calles secundarias que promuevan la caminata y la bicicleta integra a los residentes al tejido urbano y favorece un entorno saludable y centrado en las personas.
+'69': La cercanía a estaciones de bomberos asegura tiempos de respuesta rápidos, esenciales para proteger a los residentes de daños físicos y materiales.
+'74': Los entornos urbanos favorables a la caminata promueven la seguridad y estilos de vida saludables mediante un diseño centrado en las personas.
+'97': La cercanía a instalaciones de salud es esencial para la calidad de vida urbana y asegura que los residentes tengan acceso oportuno a servicios médicos.
+'101': La disponibilidad física y la accesibilidad de instalaciones de salud, como los hospitales, son determinantes esenciales de la salud en el marco de la habitabilidad urbana.
+'121': El acceso fácil a equipamientos culturales como las bibliotecas es un componente clave de la comodidad urbana, pues permite a los residentes satisfacer sus necesidades básicas de información y educación.
+'125': Las vialidades principales son fuente de contaminación del aire y ruido, asociadas con efectos negativos en la salud.
+'127': Los centros manufactureros son fuente de riesgos industriales y contaminación; restringir la cercanía residencial asegura la seguridad física y protege el bienestar.
+'129': Los mercados locales dan a los residentes acceso a alimentos frescos y oportunidades de actividad económica e interacción social en sus barrios.
+'132': La disponibilidad de minisupers es un indicador del acceso local a alimentos, que facilita la provisión conveniente de artículos de primera necesidad que moldean la calidad de vida urbana.
+'134': Los museos constituyen infraestructura cultural importante que favorece el desarrollo social, el aprendizaje a lo largo de la vida y la cohesión social de la comunidad.
+'135': El índice de vegetación de diferencia normalizada (NDVI) se usa para dar seguimiento al verdor de la ciudad, que favorece la salud mental y la sostenibilidad ambiental.
+'162': El artículo fuente no estuvo disponible para su revisión.
+'169': Vivir a una distancia suficiente de las gasolineras mejora la seguridad de los residentes al reducir los riesgos de incendios y accidentes asociados con sitios de combustibles peligrosos.
+'170': Los residentes identifican el acceso a farmacias como un equipamiento fundamental para la habitabilidad, que asegura la disponibilidad de insumos de salud en toda la ciudad.
+'174': Los barrios ubicados cerca de estaciones de policía experimentan mayor seguridad y estabilidad, lo que permite a los residentes vivir sin sentirse amenazados o en peligro.
+'180': La cercanía a escuelas primarias favorece la habitabilidad para las familias al facilitar el acceso cómodo a la educación básica de los residentes más jóvenes.
+'187': La disponibilidad de espacios abiertos ofrece a los residentes urbanos lugares de confort, disfrute y descanso, lo que contribuye directamente a su calidad de vida.
+'223': Una cobertura amplia de transporte público asegura un acceso equitativo a las oportunidades y servicios de toda la ciudad, y reduce las inequidades en salud relacionadas con la movilidad.
+'225': El acceso fácil a instalaciones recreativas enfatiza la provisión de espacios que brindan disfrute y confort físico, y mejora la habitabilidad general de los entornos urbanos.
+'228': El acceso a centros religiosos contribuye al valor de amenidad de las zonas urbanas, y brinda confort social y cultural que mejora el bienestar humano.
+'246': Asegurar que las escuelas secundarias estén a una distancia accesible mejora la comodidad urbana y satisface las necesidades educativas de los residentes, lo que contribuye a una mayor satisfacción comunitaria.
+'257': La provisión de centros deportivos es crítica para promover la actividad física, que reduce el riesgo de enfermedades crónicas y mejora la salud mental.
+'337': Niveles adecuados de humedad son necesarios para el confort térmico humano y pueden afectar la salud respiratoria y la calidad percibida del entorno urbano.
+'362': Una red peatonal bien conectada promueve un entorno seguro y favorece directamente la salud física de los residentes al fomentar la caminata.
+'367': La disponibilidad de supermercados es un indicador del entorno alimentario formal, que influye en la capacidad de los residentes de acceder a opciones de alimentos variadas y nutritivas.
+'371': Mantener las temperaturas urbanas en un rango confortable es vital para la salud física y para prevenir enfermedades relacionadas con el calor y la incomodidad térmica.
+'372': La diferencia respecto a la temperatura óptima en julio indica el confort térmico; el calor excesivo en verano se asocia con estrés fisiológico y menor actividad al aire libre.
+'379': Las universidades constituyen infraestructura social esencial; su accesibilidad contribuye a la comodidad general y a la valoración de la habitabilidad de los entornos urbanos.
+'382': Mitigar el efecto de isla de calor urbana mediante la reducción de los aumentos locales de temperatura promueve el confort térmico y favorece el bienestar físico y mental de los habitantes.
+'385': La vegetación como tipo de uso de suelo es la categoría óptima para el asentamiento humano, y favorece directamente la habitabilidad y el bienestar mediante servicios ecosistémicos y áreas verdes.
+'389': La cobertura vegetal media en la ciudad ayuda a mitigar el efecto de isla de calor urbana y aporta beneficios para la salud psicológica mediante el contacto con la naturaleza.
+'394': El acceso a centros juveniles proporciona infraestructura social esencial que favorece la cohesión social, la salud mental y el bienestar comunitario de los residentes jóvenes.
+'91': El artículo fuente no estuvo disponible para su revisión.

@@ -1,0 +1,10 @@
+# Host Python 3.11+ (the build needs no GHSCI installation or database)
+geopandas>=1.0
+pyogrio
+matplotlib>=3.8
+pandas
+numpy
+pyyaml
+openpyxl
+markdown>=3.5
+# PDF printing uses Microsoft Edge or Google Chrome in headless mode

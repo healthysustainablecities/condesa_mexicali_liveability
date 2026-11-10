@@ -13,6 +13,7 @@ need in order to deliver results that fit together.
 |---|---|
 | **[`OUTPUT_SPECIFICATION.md`](OUTPUT_SPECIFICATION.md)** | **The format results must be delivered in.** One page. Hand this to teams with the brief. |
 | `geography/mexicali_reference_areas.gpkg` | Reference geometries for every reporting scale, EPSG:6366. Use as supplied. |
+| **[Technical manual](docs/manual/README.md)** | **How every indicator, domain score and the index are calculated, with data sources, results and maps.** In Spanish ([web](docs/manual/es/README.md), [PDF](docs/manual/pdf/mexicali_uli_manual_es.pdf)) and English ([web](docs/manual/en/README.md), [PDF](docs/manual/pdf/mexicali_uli_manual_en.pdf)). |
 
 What to calculate is covered in a separate brief, not here.
 
@@ -77,3 +78,12 @@ python build/build_reference_areas.py
 
 The boundaries it depends on are built by
 `process/data/MX/CFC/build_uli_boundaries.py`.
+
+The technical manual is rebuilt from the analysis outputs with
+`python build/manual/manual.py`; see [`build/manual/README.md`](build/manual/README.md).
+
+## Licence
+
+The code in this repository is under the [MIT licence](LICENSE). The technical
+manual (`docs/manual`) is under [CC BY 4.0](docs/manual/LICENSE.md). Input
+datasets keep their own terms.

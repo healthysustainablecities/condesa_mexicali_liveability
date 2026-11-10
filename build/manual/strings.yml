@@ -1,0 +1,346 @@
+# Bilingual vocabulary of the manual: headings, table labels, and the method
+# templates used to describe each kind of indicator.  Placeholders in braces
+# are filled by render.py from the configuration and parameters.
+#
+# Spanish is Mexican Spanish.  The index is the "Índice de entornos vivibles",
+# never "habitabilidad"; the study region is the "región de estudio".
+---
+title:
+  es: Índice de entornos vivibles para Mexicali
+  en: Mexicali Urban Liveability Index
+subtitle:
+  es: 'Manual técnico: recetario de indicadores, dominios e índice'
+  en: 'Technical manual: a cookbook of indicators, domains and index'
+language_name:
+  es: Español
+  en: English
+other_language:
+  es: '[English version](../en/README.md)'
+  en: '[Versión en español](../es/README.md)'
+contents:
+  es: Contenido
+  en: Contents
+sections:
+  front: {es: Presentación, en: About this manual}
+  design: {es: 1. Diseño del estudio, en: 1. Study design}
+  reproduce: {es: 2. Reproducir el análisis, en: 2. Reproducing the analysis}
+  recipes: {es: 3. Recetas de método, en: 3. Method recipes}
+  index: {es: 4. Índice, en: 4. Index}
+  domains: {es: 5. Dominios, en: 5. Domains}
+  indicators: {es: 6. Indicadores, en: 6. Indicators}
+  upstream: {es: 7. Insumos y subindicadores, en: 7. Inputs and sub-indicators}
+  appendices: {es: Anexos, en: Appendices}
+  variables: {es: 'Anexo A. Índice de variables', en: 'Appendix A. Variable index'}
+  general: {es: 'Anexo B. Indicadores del tablero general', en: 'Appendix B. General dashboard indicators'}
+  goalposts: {es: 'Anexo C. Metas y pesos', en: 'Appendix C. Goalposts and weights'}
+  datasets: {es: 'Anexo D. Registro de fuentes de datos', en: 'Appendix D. Data source register'}
+  glossary: {es: 'Anexo E. Glosario', en: 'Appendix E. Glossary'}
+  references: {es: 'Anexo F. Referencias', en: 'Appendix F. References'}
+  pending: {es: 'Anexo G. Indicadores excluidos y pendientes', en: 'Appendix G. Excluded and pending indicators'}
+
+entry:
+  identity: {es: Identificación, en: Identity}
+  rationale: {es: Justificación e interpretación, en: Rationale and interpretation}
+  sources: {es: Fuentes de datos, en: Data sources}
+  theory: {es: 'Método: teoría', en: 'Method: theory'}
+  practice: {es: 'Método: práctica', en: 'Method: practice'}
+  recalculation: {es: Recálculo (Reimagina Urbano), en: Recalculation (Reimagina Urbano)}
+  results: {es: Resultados, en: Results}
+  map: {es: Mapa, en: Map}
+  caveats: {es: Advertencias y pendientes, en: Caveats and open questions}
+  members: {es: Indicadores del dominio, en: Indicators of the domain}
+  subdomains: {es: Subdominios, en: Subdomains}
+  used_by: {es: Lo usan, en: Used by}
+  upstream: {es: Insumos, en: Inputs}
+  back: {es: Volver al contenido, en: Back to contents}
+
+field:
+  id: {es: Identificador, en: Identifier}
+  label: {es: Nombre, en: Name}
+  core_measure: {es: Medida central (hoja de variables), en: Core measure (variable sheet)}
+  sheet_ids: {es: 'ID de la hoja / registro', en: 'Sheet / register ID'}
+  sample_point: {es: Variable en puntos de muestra, en: Sample point variable}
+  area: {es: Variable de área (valor medido), en: Area variable (measured value)}
+  score: {es: Puntuación normalizada, en: Normalised score}
+  score_plain: {es: Puntuación (variante sin atenuación), en: Score (unattenuated variant)}
+  domains: {es: Dominios (parte del peso), en: Domains (share of weight)}
+  subdomain: {es: Subdominio, en: Subdomain}
+  lens: {es: Enfoque, en: Lens}
+  polarity: {es: Mejor si es, en: Better when}
+  higher: {es: mayor, en: higher}
+  lower: {es: menor, en: lower}
+  weight: {es: Peso efectivo en el índice, en: Effective weight in the index}
+  status: {es: Estado, en: Status}
+  active: {es: Se puntúa en el índice publicado, en: Scored in the published index}
+  inactive: {es: 'Listado pero no puntuado en el índice publicado', en: 'Listed but not scored in the published index'}
+  units: {es: Unidades, en: Units}
+  register: {es: 'Registro de indicadores', en: 'Indicator register'}
+  workbook_citation: {es: 'Cita del libro de trabajo', en: 'Workbook citation'}
+  article_list: {es: 'Lista de artículos', en: 'Article list'}
+  citation_mismatch:
+    es: 'la cita del libro de trabajo no nombra a un autor del artículo de la lista; verifique antes de citar (citation_audit.csv)'
+    en: 'the workbook citation names no author of the listed article; verify before citing (citation_audit.csv)'
+  sheet_how: {es: 'Cómo calcular (hoja de variables)', en: 'How to calculate (variable sheet)'}
+  sheet_notes: {es: 'Notas (hoja)', en: 'Notes (sheet)'}
+  sheet_doubts: {es: 'Dudas (hoja)', en: 'Doubts (sheet)'}
+  about: {es: Descripción, en: Description}
+  reading: {es: Cómo leerlo, en: How to read it}
+  config_sources: {es: Fuentes declaradas en la configuración, en: Sources declared in the configuration}
+  dictionary_source: {es: 'Fuente registrada por GHSCI (diccionario de datos)', en: 'Source recorded by GHSCI (data dictionary)'}
+  destination_filter: {es: 'Filtro de destinos', en: 'Destination filter'}
+  recipes: {es: Recetas, en: Recipes}
+  code: {es: Código (GHSCI), en: Code (GHSCI)}
+  config: {es: Configuración, en: Configuration}
+  goalposts: {es: 'Metas (escala puntuada)', en: 'Goalposts (scale scored)'}
+  transform: {es: Transformación, en: Transform}
+  distribution: {es: 'Distribución en los puntos de muestra', en: 'Distribution over sample points'}
+  flags: {es: Alertas, en: Flags}
+  none: {es: ninguna, en: none}
+  draft_translation: {es: '(traducción preliminar del inglés)', en: ''}
+
+lens:
+  quality: {es: Calidad, en: Quality}
+  proximity: {es: Proximidad, en: Proximity}
+  diversity: {es: Diversidad, en: Diversity}
+  accessibility: {es: Accesibilidad, en: Accessibility}
+  presence: {es: Presencia, en: Presence}
+
+table:
+  measure: {es: Medida, en: Measure}
+  study_region: {es: 'Región de estudio (Mexicali con Condesa)', en: 'Study region (Mexicali incl. Condesa)'}
+  condesa: {es: Condesa, en: Condesa}
+  region_value: {es: Valor de la región, en: Region value}
+  region_score: {es: Puntuación de la región, en: Region score}
+  areas_with_value: {es: Áreas con valor, en: Areas with a value}
+  median_iqr: {es: 'Mediana (P25–P75), ponderada', en: 'Median (P25–P75), weighted'}
+  range: {es: Rango, en: Range}
+  beyond: {es: 'Nada a la distancia buscada', en: 'Nothing within the distance searched'}
+  score_median: {es: 'Puntuación: mediana (P25–P75)', en: 'Score: median (P25–P75)'}
+  of: {es: de, en: of}
+  manzanas: {es: manzanas, en: manzanas}
+  lots: {es: lotes, en: lots}
+  weighting_note:
+    es: 'Distribuciones: manzanas de la región de estudio ponderadas por su población censal (2020); lotes de Condesa con igual peso (3.2 residentes supuestos por lote). Los valores de la región son los que GHSCI reporta para cada región en conjunto.'
+    en: 'Distributions: study region manzanas weighted by census population (2020); Condesa lots weighted equally (3.2 residents assumed per lot). Region values are those GHSCI reports for each region as a whole.'
+  beyond_note:
+    es: 'Una distancia media se calcula sobre los puntos que encontraron un destino dentro de la distancia buscada; la fila «Nada a la distancia buscada» da la parte de la población de las áreas sin ninguno.'
+    en: 'A mean distance is taken over the sample points that found a destination within the distance searched; the row "Nothing within the distance searched" gives the share of population in areas that found none.'
+  indicator: {es: Indicador, en: Indicator}
+  share: {es: Parte, en: Share}
+  effective: {es: Peso efectivo, en: Effective weight}
+  scored_as: {es: Se puntúa como, en: Scored as}
+  min_ref_max: {es: 'Mín. · Ref. · Máx.', en: 'Min · Ref · Max'}
+  variable: {es: Variable, en: Variable}
+  entry: {es: Entrada, en: Entry}
+  description: {es: Descripción, en: Description}
+  scale: {es: Escalas, en: Scales}
+  dataset: {es: Conjunto de datos, en: Dataset}
+  record: {es: Registro, en: Record}
+  term: {es: Término, en: Term}
+  definition: {es: Definición, en: Definition}
+
+scored_as:
+  soft: {es: 'acceso suave, umbral de {t}', en: 'soft access, {t} threshold'}
+  steps: {es: escala escalonada, en: stepped ladder}
+  as_is: {es: tal cual, en: as measured}
+  goalposts_fixed: {es: 'tal cual, metas fijas de 0 a 100', en: 'as measured, fixed 0–100 goalposts'}
+
+map:
+  manzanas: {es: 'Manzanas, región de estudio', en: 'Manzanas, study region'}
+  lots: {es: 'Lotes, Condesa', en: 'Lots, Condesa'}
+  no_data: {es: Sin datos, en: No data}
+  beyond: {es: Más allá de la distancia buscada, en: Beyond the distance searched}
+  condesa: {es: Condesa, en: Condesa}
+  score_unit: {es: 'Puntos respecto al promedio de la región de estudio (0)', en: 'Points from the study region average (0)'}
+  caption_raw:
+    es: 'Mapa. {label}: valor medido ({unit}) por manzana en la región de estudio y por lote en Condesa (recuadro). Clases del tablero; los colores favorables son los claros ({better} es mejor).'
+    en: 'Map. {label}: measured value ({unit}) by manzana across the study region and by lot in Condesa (inset). Dashboard classes; the favourable end is the light end ({better} is better).'
+  caption_score:
+    es: 'Mapa. {label}: puntuación por manzana en la región de estudio y por lote en Condesa (recuadro), en puntos respecto al promedio de la región de estudio (0); azul es mejor.'
+    en: 'Map. {label}: score by manzana across the study region and by lot in Condesa (inset), in points from the study region average (0); blue is better.'
+
+units:
+  metres: m
+  m: m
+  percent: '%'
+  °C: °C
+  persons: {es: personas, en: persons}
+  m²: m²
+  points: {es: puntos, en: points}
+
+words:
+  study_region: {es: región de estudio, en: study region}
+  points_above: {es: 'puntos por encima', en: 'points above'}
+  points_below: {es: 'puntos por debajo', en: 'points below'}
+  at_average: {es: 'en el promedio', en: 'at the average'}
+  of_average: {es: 'del promedio de la región de estudio', en: 'the study region average'}
+  and: {es: y, en: and}
+  pending: {es: 'Pendiente', en: 'Pending'}
+  not_recorded: {es: 'No consta en el registro del proyecto.', en: 'Not recorded in the project register.'}
+  inactive_note: {es: 'En el índice publicado este indicador no se puntúa; la variante sin atenuación (uli_plain) sí lo puntúa.', en: 'This indicator is not scored in the published index; the unattenuated variant (uli_plain) scores it.'}
+
+summary:
+  mexicali_vs_condesa:
+    es: 'Para la región de estudio en su conjunto, el valor es {mx}; en Condesa, {cd}. La puntuación de Condesa queda {gap} {direction} del promedio de la región de estudio ({mxs} para la región de estudio).'
+    en: 'For the study region as a whole the value is {mx}; in Condesa, {cd}. Condesa''s score lies {gap} {direction} the study region average ({mxs} for the study region).'
+  reading_mx: {es: 'Región de estudio: {text}.', en: 'Study region: {text}.'}
+  reading_cd: {es: 'Condesa: {text}.', en: 'Condesa: {text}.'}
+  spread:
+    es: 'Entre manzanas, la mitad central de la población vive donde el valor va de {p25} a {p75} (mediana {p50}); entre los lotes de Condesa, de {lp25} a {lp75} (mediana {lp50}).'
+    en: 'Across manzanas, the middle half of the population live where the value ranges from {p25} to {p75} (median {p50}); across Condesa''s lots, from {lp25} to {lp75} (median {lp50}).'
+
+# Method templates by kind of indicator.  {t} threshold, {k} slope,
+# {variable} sample point variable, {area} area column.
+kinds:
+  soft_walk:
+    theory:
+      es: |
+        1. Distancia por la red peatonal desde cada punto de muestra al destino más cercano, `d` (R2), censurada en la banda mayor buscada (1,500 m): un punto sin destino a esa distancia queda sin valor.
+        2. Puntuación de acceso suave (R10): `s(d) = 1 / (1 + exp(k·(d − t)/t))`, con `t = {t}` y `k = {k}`; `s = 0.5` en el umbral, ≈ 0.99 junto al destino, ≈ 0.007 a `2t`; sin valor → `s = 0`.
+        3. Normalización AMPI (R11) de `s` con las metas de la región de estudio, luego agregación por dominio e índice (R12) y a áreas (R13).
+      en: |
+        1. Distance along the pedestrian network from each sample point to the nearest destination, `d` (R2), censored at the largest band searched (1,500 m): a point with no destination within it has no value.
+        2. Soft access score (R10): `s(d) = 1 / (1 + exp(k·(d − t)/t))`, with `t = {t}` and `k = {k}`; `s = 0.5` at the threshold, ≈ 0.99 beside the destination, ≈ 0.007 at `2t`; no value → `s = 0`.
+        3. AMPI normalisation (R11) of `s` against the study region's goalposts, then aggregation to domains and index (R12) and to areas (R13).
+  steps_walk:
+    theory:
+      es: |
+        1. Distancia por la red peatonal al destino más cercano, `d` (R2), censurada en 1,500 m.
+        2. Escala escalonada (R10): {steps}; sin valor (nada a 1,500 m) → {beyond}.
+        3. Normalización AMPI (R11), agregación (R12) y áreas (R13).
+      en: |
+        1. Distance along the pedestrian network to the nearest destination, `d` (R2), censored at 1,500 m.
+        2. Stepped ladder (R10): {steps}; no value (nothing within 1,500 m) → {beyond}.
+        3. AMPI normalisation (R11), aggregation (R12) and areas (R13).
+  soft_euclid:
+    theory:
+      es: |
+        1. Distancia en línea recta desde cada punto de muestra a la estación más cercana, `d` (R5), buscada hasta {max_distance}; más allá, sin valor.
+        2. Acceso suave (R10): `s(d) = 1 / (1 + exp(k·(d − t)/t))`, `t = {t}`, `k = {k}`; sin valor → 0.
+        3. Normalización AMPI (R11), agregación (R12) y áreas (R13).
+      en: |
+        1. Straight-line distance from each sample point to the nearest station, `d` (R5), searched to {max_distance}; beyond it, no value.
+        2. Soft access (R10): `s(d) = 1 / (1 + exp(k·(d − t)/t))`, `t = {t}`, `k = {k}`; no value → 0.
+        3. AMPI normalisation (R11), aggregation (R12) and areas (R13).
+  soft_cycle:
+    theory:
+      es: |
+        1. Red ciclista clasificada por nivel de estrés del tráfico (LTS 1–4) y restringida a tramos de bajo estrés (LTS ≤ 2) donde se permite circular en bicicleta o empujarla (R6).
+        2. Distancia por esa red al destino más cercano, `d` (R2), buscada hasta 5,000 m.
+        3. Acceso suave (R10): `t = {t}`, `k = {k}`; sin valor → 0. Luego R11–R13.
+      en: |
+        1. Cycling network classified by level of traffic stress (LTS 1–4) and restricted to low-stress links (LTS ≤ 2) where cycling or walking the bike is permitted (R6).
+        2. Distance along that network to the nearest destination, `d` (R2), searched to 5,000 m.
+        3. Soft access (R10): `t = {t}`, `k = {k}`; no value → 0. Then R11–R13.
+  beyond_walk:
+    theory:
+      es: |
+        1. Distancia por la red peatonal a la gasolinera más cercana, `d` (R2).
+        2. Indicador binario de lejanía (R3, `direction: avoid`): `b = 1` si `d > {d} m` o no hay gasolinera en la distancia buscada; `b = 0` si está a {d} m o menos.
+        3. En áreas, el porcentaje de puntos con `b = 1`. Normalización AMPI (R11), agregación (R12) y áreas (R13).
+      en: |
+        1. Distance along the pedestrian network to the nearest petrol station, `d` (R2).
+        2. Binary distance-from indicator (R3, `direction: avoid`): `b = 1` if `d > {d} m` or none was found within the distance searched; `b = 0` if one lies within {d} m.
+        3. For areas, the percentage of points with `b = 1`. AMPI normalisation (R11), aggregation (R12) and areas (R13).
+  banded_walk:
+    theory:
+      es: |
+        1. Distancia por la red peatonal al destino más cercano, `d` (R2).
+        2. Acceso binario (R3): `a = 1` si `d ≤ {d} m`, si no `a = 0` (incluye nada encontrado). Se usa el acceso binario porque la búsqueda a 1,500 m no se extiende lo bastante más allá de {d} m para un umbral suave.
+        3. En áreas, el porcentaje de puntos con acceso. Normalización AMPI (R11), agregación (R12) y áreas (R13).
+      en: |
+        1. Distance along the pedestrian network to the nearest destination, `d` (R2).
+        2. Binary access (R3): `a = 1` if `d ≤ {d} m`, otherwise `a = 0` (including nothing found). Binary access is used because the 1,500 m search does not extend far enough beyond {d} m for a soft threshold.
+        3. For areas, the percentage of points with access. AMPI normalisation (R11), aggregation (R12) and areas (R13).
+  diversity:
+    theory:
+      es: |
+        1. Para cada uno de los `k = {k_groups}` subtipos del conjunto «{set}» ({groups}), el número de destinos distintos alcanzables a 500 m por la red peatonal, `c_g` (R4).
+        2. Entropía de Shannon normalizada: `p_g = c_g / Σc`, `H = −Σ p_g·ln p_g / ln k`, de 0 (un subtipo o ninguno) a 1 (todos por igual). `k` es el número de subtipos configurados, no el de los presentes.
+        3. Normalización AMPI (R11), agregación (R12) y áreas (R13).
+      en: |
+        1. For each of the `k = {k_groups}` sub-types of the set "{set}" ({groups}), the number of distinct destinations reachable within 500 m along the pedestrian network, `c_g` (R4).
+        2. Normalised Shannon entropy: `p_g = c_g / Σc`, `H = −Σ p_g·ln p_g / ln k`, from 0 (one sub-type or none) to 1 (every sub-type equally). `k` is the number of configured sub-types, not the number present.
+        3. AMPI normalisation (R11), aggregation (R12) and areas (R13).
+  linked:
+    theory:
+      es: |
+        1. Valor preparado fuera de GHSCI por un paquete de trabajo y vinculado a las áreas de referencia (R7: {match}).
+        2. Replicado a cada punto de muestra desde el área que lo contiene ({sample_points}).
+        3. Normalización AMPI (R11) del valor tal cual, agregación (R12) y áreas (R13).
+      en: |
+        1. A value prepared outside GHSCI by a work package and linked to the reference areas (R7: {match}).
+        2. Replicated to each sample point from the area containing it ({sample_points}).
+        3. AMPI normalisation (R11) of the value as measured, aggregation (R12) and areas (R13).
+  gee:
+    theory:
+      es: |
+        1. Subíndice del Índice Global de Vulnerabilidad Urbana al Calor (GUHVI; Turner et al. 2025) calculado en Google Earth Engine sobre una cuadrícula de análisis, normalizado mín.–máx. a 0–100 dentro de la región (R8).
+        2. Cada punto de muestra toma el valor de la celda que lo contiene.
+        3. Normalización AMPI (R11) con metas fijas de 0 y 100 (la propia escala del subíndice), agregación (R12) y áreas (R13).
+      en: |
+        1. A sub-index of the Global Urban Heat Vulnerability Index (GUHVI; Turner et al. 2025), computed in Google Earth Engine on an analysis grid and min–max normalised to 0–100 within the region (R8).
+        2. Each sample point takes the value of the cell containing it.
+        3. AMPI normalisation (R11) with fixed goalposts of 0 and 100 (the sub-index's own scale), aggregation (R12) and areas (R13).
+  lpugs:
+    theory:
+      es: |
+        1. Grandes espacios verdes públicos: espacios públicos abiertos de OpenStreetMap de al menos 1 ha con NDVI medio anual ≥ 0.2 (Sentinel-2), identificados en Google Earth Engine (R8).
+        2. Distancia por la red peatonal a su entrada más cercana (R2) y acceso binario a 500 m (R3).
+        3. En áreas, el porcentaje de puntos con acceso. Normalización AMPI (R11), agregación (R12) y áreas (R13).
+      en: |
+        1. Large public green spaces: OpenStreetMap public open spaces of at least 1 ha with annual mean NDVI ≥ 0.2 (Sentinel-2), identified in Google Earth Engine (R8).
+        2. Distance along the pedestrian network to the nearest entry point (R2), and binary access within 500 m (R3).
+        3. For areas, the percentage of points with access. AMPI normalisation (R11), aggregation (R12) and areas (R13).
+  walkability:
+    theory:
+      es: |
+        1. Vida cotidiana a 300 m: `DL = a_mercado + a_conveniencia + a_transporte` (acceso binario a 300 m, R3; destinos de OpenStreetMap y paradas IMIP/OSM).
+        2. Caminabilidad: `W = z(DL) + z(densidad de población) + z(densidad de intersecciones)`, puntuaciones z sobre todos los puntos de muestra urbanos (R9).
+        3. Atenuación por confort térmico (R9): `W_tm = rango_percentil(W) · (1 − λ·h′)`, con `λ = {lambda}` y `h′ = clip((UTCI − {low})/({high} − {low}), 0, 1)` con el UTCI diurno medio (°C).
+        4. Normalización AMPI (R11) de `W_tm`, agregación (R12) y áreas (R13). En la variante sin atenuación (`uli_plain`) se usa `W` y el confort térmico se puntúa aparte.
+      en: |
+        1. Daily living within 300 m: `DL = a_market + a_convenience + a_transport` (binary access within 300 m, R3; OpenStreetMap destinations and IMIP/OSM stops).
+        2. Walkability: `W = z(population density) + z(intersection density) + z(DL)`, z-scores over all urban sample points (R9).
+        3. Thermal comfort attenuation (R9): `W_tm = percentile_rank(W) · (1 − λ·h′)`, with `λ = {lambda}` and `h′ = clip((UTCI − {low})/({high} − {low}), 0, 1)` from the daytime mean UTCI (°C).
+        4. AMPI normalisation (R11) of `W_tm`, aggregation (R12) and areas (R13). In the unattenuated variant (`uli_plain`) `W` is used and thermal comfort is scored separately.
+  utci:
+    theory:
+      es: |
+        1. UTCI (Índice Universal de Clima Térmico) diurno medio, modelado con SOLWEIG para el 21 de julio de 2023 sobre superficies peatonales y resumido por área (paquete de trabajo 2); unidades con menos de 100 píxeles peatonales se enmascaran (R7).
+        2. Replicado a cada punto de muestra desde su celda de 100 m.
+        3. En el índice publicado entra solo a través de la atenuación de la caminabilidad (R9). En `uli_plain` se normaliza (R11, menor es mejor) y se agrega (R12, R13).
+      en: |
+        1. Daytime mean UTCI (Universal Thermal Climate Index), modelled with SOLWEIG for 21 July 2023 over pedestrian surfaces and summarised by area (work package 2); units with fewer than 100 pedestrian pixels are masked (R7).
+        2. Replicated to each sample point from its 100 m cell.
+        3. In the published index it enters only through walkability's attenuation (R9). In `uli_plain` it is normalised (R11, lower is better) and aggregated (R12, R13).
+
+recalculation:
+  common:
+    es: 'Con las metas congeladas del archivo de parámetros (`Ref`, `Mín.`, `Máx.`, R14), una nueva puntuación es `r = 100 ± 60·(x − Ref)/(Máx. − Mín.)` sin volver a resolver metas; el dominio y el índice se recalculan con R12 y se resta 100. Así un escenario se compara con la línea base en la misma escala.'
+    en: 'With the frozen goalposts of the parameters file (`Ref`, `Min`, `Max`, R14), a new score is `r = 100 ± 60·(x − Ref)/(Max − Min)` without re-resolving goalposts; the domain and index are recomputed by R12, less 100. A scenario is then compared with the baseline on the same scale.'
+  network:
+    es: 'Un destino nuevo o retirado, o un cambio en la red peatonal, cambia `d` solo en los puntos cuyo destino más cercano cambia: basta un Dijkstra multi-origen desde los destinos afectados, limitado a 1,500 m, tomando el mínimo con la distancia previa.'
+    en: 'A destination added or removed, or a change to the pedestrian network, changes `d` only at points whose nearest destination changes: a multi-source Dijkstra from the affected destinations, limited to 1,500 m, taking the minimum with the previous distance, suffices.'
+  euclid:
+    es: 'Una estación nueva cambia `d` en los puntos más cercanos a ella que a cualquier otra: `d = min(d_previa, distancia euclidiana a la nueva estación)`.'
+    en: 'A new station changes `d` at points nearer it than any other: `d = min(d_previous, straight-line distance to the new station)`.'
+  cycle:
+    es: 'Reclasificar el LTS de un tramo (p. ej., una ciclovía protegida nueva) cambia la subred de bajo estrés; hay que recalcular las distancias de los puntos conectados a ese tramo.'
+    en: 'Reclassifying a link''s LTS (for example, a new protected cycle lane) changes the low-stress subnetwork; distances must be recomputed for points connected through that link.'
+  diversity:
+    es: 'Un destino nuevo suma 1 a `c_g` de su subtipo en los puntos a 500 m o menos por la red; la entropía se recalcula en esos puntos.'
+    en: 'A new destination adds 1 to its sub-type''s `c_g` at points within 500 m along the network; entropy is recomputed at those points.'
+  linked:
+    es: 'El valor viene de un paquete de trabajo externo: un escenario (p. ej., más vegetación) sustituye el valor del área y se replica a sus puntos de muestra.'
+    en: 'The value comes from an external work package: a scenario (for example, more vegetation) replaces the area''s value, which is replicated to its sample points.'
+  gee:
+    es: 'Los subíndices GUHVI se normalizan dentro de la región con sus propios mínimos y máximos; un escenario debe usar los mismos mínimos y máximos de la línea base para no reescalar toda la ciudad.'
+    en: 'GUHVI sub-indices are normalised within the region by their own minima and maxima; a scenario must use the baseline''s minima and maxima so as not to re-scale the whole city.'
+  walkability:
+    es: 'La caminabilidad usa puntuaciones z y rangos percentiles sobre todos los puntos; para un escenario, fije la media y la desviación estándar de cada componente y la distribución de `W` de la línea base (de la tabla `sample_points_walkability` y sus insumos en la base de datos), para que solo cambien los puntos afectados. Estos valores no se publican en los archivos de resultados: hay que extraerlos de la base de datos.'
+    en: 'Walkability uses z-scores and percentile ranks over all points; for a scenario, freeze each component''s baseline mean and standard deviation and the baseline distribution of `W` (from the `sample_points_walkability` table and its inputs in the database), so that only the affected points change. These values are not published in the results files: they must be extracted from the database.'
+
+polarity_words:
+  positive: {es: mayor, en: higher}
+  negative: {es: menor, en: lower}

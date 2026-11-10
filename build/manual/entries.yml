@@ -1,0 +1,275 @@
+# Curation of the manual's indicator entries.
+#
+# Everything an entry *says* about an indicator's definition comes from the
+# region configuration, the composite parameters and the dashboard export.
+# This file only says where else to look:
+#
+#   sheet     rows of the ULI variable sheet (excel_work_sheet_key.xlsx, sheet
+#             'Current version of subvariable-'), by Sub-variable name
+#   register  indicator_register.csv ids (rationale and literature)
+#   kind      which method template of strings.yml describes it
+#   pois      points_of_interest entries whose OGR filter defines the
+#             destinations (quoted verbatim in "Data sources")
+#   upstream  upstream.yml entries it is built from
+#   caveats   limitations, each attributed to where it is recorded
+#
+# Caveats paraphrase the configuration's own comments, the sheet's notes and
+# doubts, and the project's README files; none is a new judgement.
+---
+indicators:
+  heat_exposure:
+    kind: gee
+    sheet: ['Heat exposure']
+    register: ['382']
+    upstream: [guhvi]
+    caveats:
+      - en: 'The GUHVI sub-indices are min–max normalised within the region, so 0 and 100 are the least and most exposed places in Mexicali, not absolute thresholds (configuration, composite_indices).'
+        es: 'Los subíndices GUHVI se normalizan mín.–máx. dentro de la región: 0 y 100 son los lugares menos y más expuestos de Mexicali, no umbrales absolutos (configuración, composite_indices).'
+      - en: 'Heat exposure is derived from land surface temperature alone; the sheet''s separate heat exposure core measure (land surface temperature, extreme heat frequency, night-time heat retention) awaits delivery (configuration).'
+        es: 'La exposición al calor se deriva solo de la temperatura de la superficie; la medida central separada de exposición al calor de la hoja (temperatura de superficie, frecuencia de calor extremo, retención nocturna) está pendiente de entrega (configuración).'
+  heat_sensitivity:
+    kind: gee
+    sheet: ['Heat sensitivity']
+    register: []
+    upstream: [guhvi]
+    caveats:
+      - en: 'Min–max normalised within the region (see heat exposure).'
+        es: 'Normalizado mín.–máx. dentro de la región (véase exposición al calor).'
+  adaptive_capability:
+    kind: gee
+    sheet: ['Adaptive capability']
+    register: []
+    upstream: [guhvi]
+    caveats:
+      - en: 'Several of its inputs (the subnational human development index, the infant mortality rate) are constant across a single city, so its variation within Mexicali comes mainly from the child dependency ratio (configuration, dashboard.hide).'
+        es: 'Varios de sus insumos (el índice de desarrollo humano subnacional, la tasa de mortalidad infantil) son constantes en una sola ciudad, por lo que su variación dentro de Mexicali proviene sobre todo de la razón de dependencia infantil (configuración, dashboard.hide).'
+  thermal_comfort:
+    kind: utci
+    sheet: ['Dry bulb air temperature', 'Mean radiant temperature', 'Wind speed 10m above ground level', 'Relative humidity']
+    register: ['371', '337', '372']
+    upstream: [utci]
+    caveats:
+      - en: 'Air temperature, humidity and wind are spatially uniform in the model, so only radiant temperature (sun and shade) varies across the city; most values exceed the UTCI polynomial''s fitted range; comparisons within a neighbourhood are sound where rankings of neighbourhoods kilometres apart are not (configuration, linkage_indicators.utci; README_mexicali_utci.md).'
+        es: 'La temperatura del aire, la humedad y el viento son uniformes en el modelo, de modo que solo varía la temperatura radiante (sol y sombra); la mayoría de los valores exceden el rango de ajuste del polinomio UTCI; las comparaciones dentro de un barrio son sólidas, no así las clasificaciones de barrios a kilómetros de distancia (configuración, linkage_indicators.utci; README_mexicali_utci.md).'
+      - en: 'Only daytime thermal comfort is used: night-time UTCI varies by fractions of a degree across the city (30.3–30.6 °C) (configuration).'
+        es: 'Solo se usa el confort térmico diurno: el UTCI nocturno varía fracciones de grado en la ciudad (30.3–30.6 °C) (configuración).'
+  blue_space:
+    kind: steps_walk
+    sheet: ['Available natural blue spaces']
+    register: ['10']
+    upstream: [blue_space_layer]
+    caveats:
+      - en: 'The sheet''s source method derives water from Landsat (MNDWI) and scores by radiation distance; here the ladder is applied to walking distance to water features mapped in OpenStreetMap, polygons and lines, so that Mexicali''s canals and drains count (configuration, accessibility).'
+        es: 'El método de la hoja deriva el agua de Landsat (MNDWI) y puntúa por distancia de radiación; aquí la escala se aplica a la distancia a pie a cuerpos de agua de OpenStreetMap, polígonos y líneas, para que cuenten los canales y drenes de Mexicali (configuración, accessibility).'
+  vegetation:
+    kind: linked
+    linkage: {spec: external, column: ndvi}
+    sheet: ['Vegetation coverage percent']
+    register: ['135', '389', '385']
+    upstream: [work_package_layers]
+    caveats:
+      - en: 'Not to be equated with accessible cooling (sheet note). Tree canopy, a better proxy for shade, covers only 210 manzanas and is not used (configuration).'
+        es: 'No debe equipararse con enfriamiento accesible (nota de la hoja). La cobertura arbórea, mejor aproximación a la sombra, cubre solo 210 manzanas y no se usa (configuración).'
+  parks:
+    kind: soft_walk
+    sheet: ['Access to parks (local, neighbourhood, district, regional)', 'Population with access to parks']
+    register: ['162', '187']
+    upstream: [public_open_space]
+    caveats:
+      - en: 'Where the sheet pairs access with the percentage of the population with access, one indicator serves both: at a sample point they are the same measure (configuration).'
+        es: 'Donde la hoja empareja el acceso con el porcentaje de población con acceso, un solo indicador sirve para ambos: en un punto de muestra son la misma medida (configuración).'
+  lpugs:
+    kind: lpugs
+    sheet: ['% of total land area within 500 m pedestrian network distance of LPUGS (LPUGS Accesibility)', '% of population with access to LPUGS within 500 m pedestrian network distance (LPUGS Accesibility)']
+    register: ['91', '187']
+    upstream: [public_open_space]
+    caveats:
+      - en: 'This is the accessibility sub-variable, calculated by the core GHSCI workflow. The sheet''s separate availability sub-variable (the share of an area''s land that is large public green space) describes an area rather than a sample point''s surroundings, so it is not scored in the index as it stands (configuration). The sheet asks whether plazas should be included.'
+        es: 'Esta es la subvariable de accesibilidad, que calcula el flujo central de GHSCI. La subvariable aparte de disponibilidad de la hoja (la parte del suelo de un área que es gran espacio verde público) describe un área y no el entorno de un punto de muestra, por lo que no se puntúa en el índice por ahora (configuración). La hoja pregunta si deben incluirse las plazas.'
+  major_roads:
+    kind: linked
+    linkage: {spec: external, column: major_road_length_300m}
+    sheet: ['Proximity to major roads']
+    register: ['125']
+    upstream: [work_package_layers]
+    caveats:
+      - en: 'The sheet describes major road length within 500 m; the delivered variable is within 300 m (final_indicators.gpkg).'
+        es: 'La hoja describe la longitud de vialidades principales a 500 m; la variable entregada es a 300 m (final_indicators.gpkg).'
+  walkability:
+    kind: walkability
+    sheet: ['Street connectivity', 'Net residential density', 'Commercial land use proportion', 'Land use mix']
+    register: ['74', '362']
+    pois: [pt_any]
+    upstream: [walkability_components, utci]
+    caveats:
+      - en: 'Net residential density, commercial land use and land use mix (final_indicators.gpkg) are the components of the walkability core measure, which walkability itself represents: scoring them as well would count density twice (configuration).'
+        es: 'La densidad residencial neta, el uso comercial y la mezcla de usos (final_indicators.gpkg) son los componentes de la medida central de caminabilidad, que la caminabilidad misma representa: puntuarlos también contaría dos veces la densidad (configuración).'
+      - en: 'The fixed 30–50 °C range judges heat absolutely: most of the city lies between 43.8 and 46.0 °C on the modelled day, all of it very hot, and re-scaling between those percentiles would have treated the least hot as comfortable (configuration, decided 25 September 2026).'
+        es: 'El rango fijo de 30–50 °C juzga el calor de forma absoluta: la mayor parte de la ciudad está entre 43.8 y 46.0 °C el día modelado, todo muy caluroso, y reescalar entre esos percentiles habría tratado lo menos caluroso como confortable (configuración, decidido el 25 de septiembre de 2026).'
+  block_size:
+    kind: linked
+    linkage: {spec: external, column: block_perimeter_m}
+    sheet: ['Block size']
+    register: []
+    upstream: [work_package_layers]
+    caveats:
+      - en: 'The sheet notes this is very important given that Condesa comprises multiple gated communities.'
+        es: 'La hoja señala que es muy importante dado que Condesa se compone de múltiples fraccionamientos cerrados.'
+  police_2km:
+    kind: soft_euclid
+    euclid: imip_police_station
+    sheet: ['% of the population with coverage of police stations']
+    register: ['174']
+    upstream: [emergency_stations]
+    caveats:
+      - en: 'The threshold was revised from 15 km to 2 km by the work package: 15 km covered the whole municipality with no variation. Straight-line distance, as the road network was unavailable to the work package (sheet note).'
+        es: 'El umbral se revisó de 15 km a 2 km por el paquete de trabajo: 15 km cubrían todo el municipio sin variación. Distancia en línea recta, pues la red vial no estaba disponible para el paquete de trabajo (nota de la hoja).'
+  fire_3km:
+    kind: soft_euclid
+    euclid: imip_fire_station
+    sheet: ['% of the population with coverage of of emergency services']
+    register: ['69']
+    upstream: [emergency_stations]
+    caveats:
+      - en: 'Threshold revised from 70 km to 3 km (NFPA 1710, about four minutes at 45 km/h); 70 km covered the entire municipality (sheet note). The straight-line search for fire stations has no cap below its 75 km catchment.'
+        es: 'Umbral revisado de 70 km a 3 km (NFPA 1710, unos cuatro minutos a 45 km/h); 70 km cubrían todo el municipio (nota de la hoja). La búsqueda en línea recta de estaciones de bomberos no tiene tope por debajo de su área de 75 km.'
+  cycle_low_stress_food:
+    kind: soft_cycle
+    sheet: ['Average distance to nearest']
+    register: ['62']
+    upstream: [lts_network]
+    caveats:
+      - en: 'The sheet describes level of traffic stress as a suite of variables still to be disaggregated; the destination (fresh food or convenience, from OpenStreetMap) and the 1.5 km threshold are a provisional single choice from that suite.'
+        es: 'La hoja describe el nivel de estrés del tráfico como un conjunto de variables aún por desagregar; el destino (alimentos frescos o conveniencia, de OpenStreetMap) y el umbral de 1.5 km son una elección provisional dentro de ese conjunto.'
+  public_transport:
+    kind: soft_walk
+    pois: [pt_any]
+    sheet: ['Access to public transport stops']
+    register: ['26', '223']
+    upstream: [pt_stops]
+    caveats:
+      - en: 'Mexicali has no GTFS feed. IMIP stops are pooled with stops identified from OpenStreetMap, so a stop present in both is counted twice in any count of stops (it does not affect distances) (configuration, points_of_interest).'
+        es: 'Mexicali no tiene GTFS. Las paradas del IMIP se combinan con las de OpenStreetMap, de modo que una parada presente en ambas se cuenta dos veces en cualquier conteo (no afecta las distancias) (configuración, points_of_interest).'
+  fresh_food:
+    kind: soft_walk
+    pois: [denue_fresh_food]
+    sheet: ['Access to fresh food', 'Percentage of population with access to fresh food']
+    register: ['129', '11', '367']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'Bakeries and tortillerías are classified by SCIAN as manufacturing and are not in this category; they enter fresh food diversity as a sub-type (configuration).'
+        es: 'Las panaderías y tortillerías se clasifican en SCIAN como manufactura y no están en esta categoría; entran en la diversidad de alimentos frescos como subtipo (configuración).'
+  div_fresh_food_500m:
+    kind: diversity
+    set: fresh_food
+    pois: [denue_fresh_food, denue_bakery_tortilleria]
+    sheet: ['Diversity of available fresh food']
+    register: ['129', '11', '367']
+    upstream: [diversity_sets, denue_destinations]
+    caveats: []
+  convenience:
+    kind: soft_walk
+    pois: [denue_food_retail]
+    sheet: ['Access to convenience stores', 'Percentage of population with access to convenience stores']
+    register: ['132']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'Labelled "convenience stores", the destination is DENUE food retail of any kind (abarrotes and misceláneas, confectionery, prepared food, self-service and department stores), which includes the fresh food retailers.'
+        es: 'Con el nombre de «tiendas de conveniencia», el destino es el comercio de alimentos de cualquier tipo del DENUE (abarrotes y misceláneas, dulcerías, alimentos preparados, autoservicio y departamentales), que incluye los comercios de alimentos frescos.'
+  petrol_250m:
+    kind: beyond_walk
+    pois: [denue_petrol_station]
+    sheet: ['Access to petrol station (>= 250m away)', 'Percentage of population with access to petrol stations']
+    register: ['169']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'The sheet''s notes cite an increased relative risk of childhood leukaemia within 250 m of a petrol station, and record doubts about relevance, as most people in Mexicali drive.'
+        es: 'Las notas de la hoja citan un mayor riesgo relativo de leucemia infantil a menos de 250 m de una gasolinera, y registran dudas sobre su pertinencia, pues la mayoría en Mexicali se desplaza en automóvil.'
+  primary_school:
+    kind: soft_walk
+    pois: [denue_primary_school]
+    sheet: ['Access to educational services']
+    register: ['180']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'Schools combining several levels (SCIAN 611171/611172) are counted in each level they serve (configuration).'
+        es: 'Las escuelas que combinan niveles (SCIAN 611171/611172) se cuentan en cada nivel que atienden (configuración).'
+  div_education_500m:
+    kind: diversity
+    set: education
+    pois: [denue_preschool, denue_primary_school, denue_secondary_school, denue_tertiary_education]
+    sheet: ['Diversity of available educational services']
+    register: ['180', '246', '379']
+    upstream: [diversity_sets, denue_destinations]
+    caveats: []
+  primary_healthcare:
+    kind: soft_walk
+    pois: [denue_primary_healthcare]
+    sheet: ['Access to health & health care services']
+    register: ['97']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'The ULI worksheet gives SCIAN 6221 for this row, but 6221 is general hospitals; general medical consulting rooms and clinics (6211xx) are used (configuration).'
+        es: 'La hoja da el código SCIAN 6221 para esta fila, pero 6221 corresponde a hospitales generales; se usan consultorios y clínicas de medicina general (6211xx) (configuración).'
+  div_health_500m:
+    kind: diversity
+    set: health_care
+    pois: [denue_primary_healthcare, denue_medical_clinic, denue_hospital, denue_pharmacy, denue_care_support]
+    sheet: ['Diversity of available health & health care services']
+    register: ['97', '101', '170']
+    upstream: [diversity_sets, denue_destinations]
+    caveats: []
+  care_support:
+    kind: soft_walk
+    pois: [denue_care_support]
+    sheet: ['Access to care services']
+    register: []
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'The sheet''s "how to calculate" for this row describes primary healthcare; the care and social support category (SCIAN 623, 624) is used instead, matching the row''s name.'
+        es: 'El «cómo calcular» de esta fila de la hoja describe atención primaria; se usa en su lugar la categoría de cuidado y apoyo social (SCIAN 623, 624), acorde con el nombre de la fila.'
+  div_care_500m:
+    kind: diversity
+    set: care
+    pois: [denue_care_support]
+    sheet: ['Diversity of care services']
+    register: []
+    upstream: [diversity_sets, denue_destinations]
+    caveats:
+      - en: 'The sheet''s method for this row was not specified ("?"); the sub-types are the SCIAN groups within care and social support (configuration).'
+        es: 'La hoja no especificó el método de esta fila («?»); los subtipos son los grupos SCIAN de cuidado y apoyo social (configuración).'
+  ccr_any:
+    kind: soft_walk
+    pois: [denue_community, denue_culture, denue_sport, denue_recreation]
+    sheet: ['Access to community, culture and recreation services']
+    register: ['46', '58', '121', '134', '228', '225', '257', '394']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'The sheet asks whether to split this into community, recreational and cultural access; one measure is used, and the split is reflected in its diversity.'
+        es: 'La hoja pregunta si separarlo en acceso comunitario, recreativo y cultural; se usa una sola medida, y la separación se refleja en su diversidad.'
+  div_ccr_500m:
+    kind: diversity
+    set: community_culture_rec
+    pois: [denue_community, denue_culture, denue_sport, denue_recreation]
+    sheet: ['Diversity of  community, culture and recreation services']
+    register: ['46', '58', '121', '134', '228', '225', '257', '394']
+    upstream: [diversity_sets, denue_destinations]
+    caveats: []
+  manufacturing_1000m:
+    kind: banded_walk
+    pois: [denue_manufacturing]
+    sheet: ['Access to manufacturing district/centre']
+    register: ['127']
+    upstream: [denue_destinations]
+    caveats:
+      - en: 'Manufacturing is read here as a source of employment: the sheet places this sub-variable under the core measure "Access to employment", so being within reach of manufacturing counts as better. The register''s rationale for the row comes from a source that treats manufacturing centres as industrial hazards; that reading is recorded above for completeness, but it is not the one the index applies.'
+        es: 'La manufactura se interpreta aquí como fuente de empleo: la hoja sitúa esta subvariable en la medida central «Acceso al empleo», de modo que tenerla al alcance cuenta como mejor. La justificación del registro para esta fila proviene de una fuente que trata los centros manufactureros como riesgos industriales; esa lectura se registra arriba por completitud, pero no es la que aplica el índice.'
+  job_diversity:
+    kind: linked
+    linkage: {spec: external, column: economic_sector_diversity}
+    sheet: ['Job diversity']
+    register: []
+    upstream: [work_package_layers]
+    caveats:
+      - en: 'Delivered for the 100 m grid only, which tiles the city, so every sample point takes its cell''s value (configuration). The sheet''s buffer distance is unspecified ("XX").'
+        es: 'Entregado solo para la cuadrícula de 100 m, que cubre la ciudad, de modo que cada punto de muestra toma el valor de su celda (configuración). La distancia de la hoja no está especificada («XX»).'

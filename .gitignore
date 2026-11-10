@@ -17,3 +17,6 @@ dashboard/data/**/*.f32
 dashboard/data/**/*.i32
 dashboard/data/**/data_dictionary.xlsx
 dashboard/data/**/data_dictionary.pdf
+
+# Manual build intermediates (HTML printed to PDF)
+build/manual/_work/

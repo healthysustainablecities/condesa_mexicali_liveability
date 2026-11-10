@@ -1,0 +1,2113 @@
+###########################################################
+## Mexicali Urban Liveability Index (ULI) study region.
+##
+## Purpose: produce multiscale indicator summaries for the Mexicali
+## urban area and the Condesa development, at the scales the ULI
+## output specification requires -- 100 m population grid, manzanas,
+## AGEBs, and region -- in EPSG:6366, from a single analysis so that
+## every scale is internally consistent.
+##
+## Differs from the earlier MX_Mexicali_2025-* configurations in
+## three deliberate ways:
+##
+## 1. The population source is the GHS-POP 2025 raster rather than
+##    vector AGEB counts.  GHSCI reprojects it from Mollweide to the
+##    project CRS using sum resampling (conserving population counts;
+##    see _utils.reproject_raster) and vectorises it, which is what
+##    produces the required 100 m grid.  A vector population source
+##    produces no grid at all.
+##
+## 2. 'custom_population' is deliberately NOT set.  Setting it would
+##    redirect the grid summary to the named aggregation, leaving no
+##    100 m grid output.
+##
+## 3. The study region is the union of the Mexicali urban area and
+##    the Condesa development, dissolved to a single feature.  Only
+##    82% of Condesa falls inside lim_aumxl24, so the administrative
+##    boundary alone would clip 2,419 of its 14,989 lots.  The
+##    boundary must be a single feature because with
+##    'urban_intersection: false' GHSCI creates one study region row
+##    per boundary feature.
+# yamllint disable rule:line-length
+###########################################################
+---
+name: Mexicali
+year: 2025
+country: México
+country_code: MX
+continent: North America
+crs:
+  name: Mexico ITRF2008 / UTM zone 11N
+  standard: EPSG
+  srid: 6366
+study_region_boundary:
+  ## Union of the Mexicali urban area (IMIP lim_aumxl24) and the
+  ## Condesa development, dissolved to one feature; see
+  ## MX/CFC/build_uli_boundaries.py
+  data: MX/INEGI-02l-NOMGEO-Mexicali-Condesa-Fraccionamientos.geojson
+  source: Instituto Nacional de Estadística, Geografía e Informática (INEGI); Centro para el Futuro de las Ciudades (CFC) 
+  publication_date: 2025-07-31
+  url: https://en.www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/bvinegi/productos/geografia/marcogeo/794551163061/02_bajacalifornia.zip
+  licence: Términos de Libre Uso de la Información del INEGI https://www.inegi.org.mx/inegi/terminos.html
+  urban_intersection: false
+  citation: "INEGI (2025). Marco Geoestadístico 2025 - Baja California.  https://en.www.inegi.org.mx/app/biblioteca/ficha.html?upc=794551163061; CFC (2026) Condesa development boundaries."
+  notes: Dissolved union of MX/INEGI/02_bajacalifornia.zip/conjunto_de_datos/02l.shp -where  "NOMGEO='Mexicali'" and convex hull of MX/CFC/Nvo desarrollo/_Fraccionamientos.geojson, so that the analysis covers 100% of the Condesa development.
+exclusion_region:
+  data: MX/exclusion/ca_state.zip
+  source: https://data.ca.gov/dataset/e212e397-1277-4df3-8c22-40721b095f33/resource/3db1e426-fb51-44f5-82d5-a54d7c6e188b/download/ca_state.zip
+  licence: public domain
+  citation: California State boundary in shapefile format from the US Census Bureau's 2023 MAF/TIGER database.
+  notes: Es necesario tener cuidado para garantizar que la zona de estudio delimitada no se extienda más allá de la frontera con Estados Unidos // Care must be taken to ensure the buffered study region does not expand across the border with the United States, so that road network and amenities outside Mexico are not included in accessibility calculations.  Per https://github.com/healthysustainablecities/global-indicators/issues/610 the network setup is restricted to the main study region (not the buffered region).
+population:
+  name: "Global Human Settlements population data: 2025, Mollweide (EU JRC, 2023)"
+  data_dir: MX/CFC/GHS_POP_E2025_GLOBE_R2023A_54009_100_V1_0_R6_C8/
+  data_type: raster:Int64
+  ## Image resolution; also used to name the population grid and its
+  ## indicator summary (population_100m_2025 / indicators_100m_2025)
+  resolution: 100m
+  raster_band: 1
+  raster_nodata: -200
+  pop_min_threshold: 1
+  crs_name: Mollweide
+  crs_standard: ESRI
+  crs_srid: 54009
+  source_url: "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_POP_GLOBE_R2023A/GHS_POP_E2025_GLOBE_R2023A_54009_100/V1-0/tiles/GHS_POP_E2025_GLOBE_R2023A_54009_100_V1_0_R6_C8.zip"
+  year_published: 2023
+  year_target: 2025
+  date_acquired: 20260804
+  licence: CC BY 4.0
+  citation: "Schiavina, M., Freire, S., Carioli, A., MacManus, K. (2023). GHS-POP R2023A - GHS population grid multitemporal (1975-2030). European Commission, Joint Research Centre (JRC). https://doi.org/10.2905/2FF68A52-5B5B-4A22-8F40-C41DA8332CFE"
+  notes: Population is NOT redirected to a custom aggregation; the 100 m grid derived from this raster is a required output scale.
+sampling:
+  ## Much of the Condesa development is platted but not yet occupied,
+  ## and is not covered by 2020 census population.  Sample the full
+  ## study region regardless of population coverage so that estimates
+  ## are produced there.  Sample points without population coverage
+  ## are excluded from population-weighted summaries but included in
+  ## custom aggregations.
+  sample_unpopulated_areas: true
+  ## One additional sample point per Condesa lot, snapped to its
+  ## nearest network edge (see MX/CFC/build_condesa_sample_points.py).
+  ##
+  ## Network sample points are placed at intervals along streets, so
+  ## lots set back from a street fall outside the 30 m aggregation
+  ## catchment and receive no values -- 3,299 of 14,989 lots on the
+  ## first run.  Widening the catchment instead would be worse: many
+  ## lots sit deep inside gated fraccionamientos with a single exit,
+  ## so a sample point that is near in a straight line may lie beyond
+  ## the gate and imply a much shorter route than a resident could
+  ## take.  It would also average away the variation between lots that
+  ## makes this development worth examining.
+  ##
+  ## The 100 m tolerance is deliberate rather than generous: lots
+  ## further than this from a mapped street are in fraccionamientos
+  ## whose internal streets are absent from OpenStreetMap, and
+  ## snapping them hundreds of metres to an external road would
+  ## fabricate access they do not have.  Those lots are better left
+  ## without a value.
+  custom_sample_points: MX/CFC/condesa_lot_sample_points.gpkg
+  custom_sample_points_snap_tolerance: 100
+custom_aggregations:
+  ## Order matters: later entries may aggregate from earlier ones.
+  agebs:
+    data: MX/mexicali_AGEB_population.geojson
+    id: CVEGEO
+    keep_columns: AGEB, POBTOT
+    ## AGEBs (median 36 ha) are much larger than a 100 m cell, so the
+    ## grid aggregates into them cleanly, weighted by grid population.
+    aggregation_source: grid
+    weight: pop_est
+    notes: INEGI 2020 AGEB boundaries with census population, as prepared in Mexicali_2025.ipynb.
+  manzanas:
+    data: MX/CFC/mexicali_manzanas.gpkg:manzanas
+    id: CVEGEO
+    keep_columns: CVE_AGEB, CVE_MZA, AMBITO, POBTOT, POB0_14, POB15_64, POB65_MAS, VIVTOT, TVIVHAB
+    ## Manzanas (median 0.71 ha) are finer than a 100 m grid cell, so
+    ## aggregating from the grid would just copy the containing cell.
+    ## Sample points within 30 m give a finer result.
+    aggregation_source: point
+    aggregate_within_distance: 30
+    weight: POBTOT
+    notes: INEGI 2020 census manzanas with geometries updated by CFC (19,223 manzanas; 940,287 residents; 236.9 km2), prepared by MX/CFC/build_manzanas.py. Replaces MX/CFC/MXL_MZAPob.gpkg:02m, which covered the Condesa development only partially -- 6,274 of its 14,989 lots fell within a manzana, against 12,985 here. 3,497 manzanas have no recorded population (2,772 of them rural) and report a null pop_est rather than zero; they are excluded from population-weighted summaries. Sixteen newly mapped Condesa blocks had no manzana key and carry a synthetic identifier assigned by build_manzanas.py, recognisable by an 'S' where the manzana number would be.
+  condesa_lotes:
+    data: MX/CFC/Nvo desarrollo/Lotes_desarrollo_EXE_cleaned_400sqm_or_less.geojson
+    keep_columns: ID
+    aggregation_source: point
+    aggregate_within_distance: 15
+    weight: 3.2
+    notes: 'Individual lots in the Condesa development (median 120 m2). No population data; however we can assign an assumed value, assuming average household population of 3.2 for Mexicali (2020; https://inegi.org.mx/app/areasgeograficas/?ag=02002#tabMCcollapse-Indicadores).  Note: this data appeared to include more than lots, larger block areas which appeared to be artifacts, so I filtered to those with area <= 400sqm (manually in QGIS).'
+  condesa_fraccionamientos:
+    data: MX/CFC/Nvo desarrollo/_Fraccionamientos.geojson
+    keep_columns: FID
+    aggregation_source: condesa_lotes
+    weight: pop_est
+    notes: Condesa subdivision polygons (median 7.9 ha). pop_est is summed from condesa_lotes (3.2 people per lot assumed).
+  region_mexicali:
+    data: MX/CFC/mexicali_uli_boundaries.gpkg:region_mexicali
+    id: area_id
+    keep_columns: area_name
+    aggregation_source: grid
+    weight: pop_est
+    notes: The Mexicali urban area boundary, dissolved, giving a single summary row for the administrative area.
+  region_condesa:
+    data: MX/CFC/mexicali_uli_boundaries.gpkg:region_condesa
+    id: area_id
+    keep_columns: area_name
+    aggregation_source: condesa_lotes
+    weight: pop_est
+    notes: The Condesa development, dissolved, giving a single summary row for the development as a whole.
+## Custom public transport stops.  Mexicali has no GTFS feed, so the
+## IMIP equipamiento layer is the local source for transit stops.
+##
+## 'replace' is left at its default (false), so these features are
+## pooled with any identified from OpenStreetMap, matching the
+## earlier Mexicali runs.  Set it to true to use IMIP alone, which
+## would make the reported count of stops exact rather than double
+## counting stops present in both sources.
+points_of_interest:
+  pt_any:
+    data: MX/CFC/cleaned/por_estado/02_baja_california/002_mexicali/imip/equipamiento_combined.fgb -where "equipamiento_category='transp' AND TIPO != 'TERMINAL INTERIOR DE CARGA (CENTRAL DE SERVICIOS DE CARGA)'"
+    source: IMIP / CFC
+    publication_date: 2026-05-18
+    url: ""
+    licence: "Provided by IMIP via CFC"
+    citation: As per advice from Juan Ernesto Díaz Noguez
+  ##
+  ## DENUE 2026 (INEGI) economic units, filtered to functional
+  ## categories by SCIAN activity code.  The source is the whole of
+  ## Baja California; each entry reads it with an OGR -where filter,
+  ## and _05_compile_destinations additionally clips to the buffered
+  ## study region, so the counts below (Mexicali municipality) are an
+  ## upper bound on what lands in the analysis.
+  ##
+  ## Codes were derived from the dataset itself rather than from the
+  ## DENUE-SCIAN worksheet, which supplies codes for only two of its
+  ## eighteen functional categories.  Provenance is shared via a YAML
+  ## anchor on the first entry.
+  ##
+  ## Fresh food retail: 1,103 establishments in Mexicali.
+  ## Butchers, poulterers, fishmongers, greengrocers, grain and dairy
+  ## retailers, supermarkets and minisupers -- the DENUE equivalent of
+  ## GHSCI's 'fresh food market'.
+  denue_fresh_food: &denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('461121','461122','461123','461130','461140','461150','462111','462112')"
+    dest_name_full: Fresh food retail (DENUE)
+    domain: Daily essential services
+    ## Retain each establishment's SCIAN activity code as a destination tag, so
+    ## that a category imported once can be subdivided into its sub-types for
+    ## the diversity measures below without declaring a separate entry for each.
+    ## Shared by every DENUE category through this anchor.
+    keep_columns: codigo_act
+    source: INEGI, Directorio Estadistico Nacional de Unidades Economicas (DENUE)
+    publication_date: 2026-05
+    url: https://www.inegi.org.mx/app/mapa/denue/
+    licence: Terminos de Libre Uso de la Informacion del INEGI
+    citation: "INEGI (2026). Directorio Estadistico Nacional de Unidades Economicas (DENUE), mayo 2026. Instituto Nacional de Estadistica y Geografia, Mexico."
+  ## Food retail, any: 4,225 establishments in Mexicali.
+  ## All food retail including abarrotes / miscelaneas, confectionery and
+  ## prepared foods, plus self-service and department stores. Alcohol and
+  ## tobacco retail (461211-461220) are excluded.
+  denue_food_retail:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "(codigo_act LIKE '4611%' AND codigo_act NOT IN ('461211','461212','461213','461220')) OR codigo_act LIKE '4621%'"
+    dest_name_full: Food retail, any (DENUE)
+    domain: Daily essential services
+  ## Bakeries and tortillerias: 607 establishments in Mexicali.
+  ## Panificacion tradicional (217), tortillas de harina de trigo (139) and
+  ## tortillas de maiz / molienda de nixtamal (251).  SCIAN classifies these as
+  ## manufacturing (31) rather than retail, because the food is made where it is
+  ## sold, so they fall outside every 46xx food category and were invisible to
+  ## the food indicators -- even though the ULI sub-variable names bakeries and
+  ## tortillerias as fresh food, and in Mexicali they are daily destinations.
+  ## Industrial bakery (311811) and biscuit/pasta manufacture (311820) are
+  ## excluded as they are not retail outlets.
+  denue_bakery_tortilleria:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('311812','311813','311830')"
+    dest_name_full: Bakeries and tortillerias (DENUE)
+    domain: Daily essential services
+  ## Basic household goods: 1,208 establishments in Mexicali.
+  ## Stationery, disposables, furniture, appliances, kitchenware, hardware
+  ## (ferreterias / tlapalerias) and cleaning products.
+  denue_household_goods:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('465311','465914','466111','466112','466114','467111','467115')"
+    dest_name_full: Basic household goods (DENUE)
+    domain: Daily essential services
+  ## Pharmacies and medicine retail: 689 establishments in Mexicali.
+  ## Pharmacies with and without a minisuper, and naturopathic /
+  ## homeopathic medicine retailers.
+  denue_pharmacy:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('464111','464112','464113')"
+    dest_name_full: Pharmacies and medicine retail (DENUE)
+    domain: Daily essential services
+  ## Financial and postal services: 369 establishments in Mexicali.
+  ## Retail banking, development banking, savings cooperatives, currency
+  ## exchange and postal services. Listed as optional in the ULI
+  ## sub-variable table.
+  denue_finance_comms:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('522110','522210','522320','523122','491110')"
+    dest_name_full: Financial and postal services (DENUE)
+    domain: Daily essential services
+  ## Preschools: 334 establishments in Mexicali.
+  denue_preschool:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('611111','611112','611171','611172')"
+    dest_name_full: Preschools (DENUE)
+    domain: Health, education and care
+  ## Primary schools: 376 establishments in Mexicali.
+  ## Schools combining several levels (611171 / 611172) are counted in
+  ## each level they serve, so they appear here and in the preschool and
+  ## secondary categories.
+  denue_primary_school:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('611121','611122','611171','611172')"
+    dest_name_full: Primary schools (DENUE)
+    domain: Health, education and care
+  ## Secondary and upper secondary schools: 237 establishments in Mexicali.
+  ## General, technical and upper secondary (media superior) schools.
+  denue_secondary_school:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('611131','611132','611142','611151','611152','611161','611162','611171','611172')"
+    dest_name_full: Secondary and upper secondary schools (DENUE)
+    domain: Health, education and care
+  ## Tertiary and vocational education: 155 establishments in Mexicali.
+  ## Higher technical and university education, commercial and secretarial
+  ## schools, and trades training.
+  denue_tertiary_education:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act LIKE '6112%' OR codigo_act LIKE '6113%' OR codigo_act IN ('611411','611412','611511','611512')"
+    dest_name_full: Tertiary and vocational education (DENUE)
+    domain: Health, education and care
+  ## Primary healthcare: 397 establishments in Mexicali.
+  ## General medical consulting rooms and clinics of consulting rooms,
+  ## public and private. Note the ULI worksheet gives 6221 for this row,
+  ## but 6221 is general hospitals.
+  denue_primary_healthcare:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('621111','621112','621115','621116')"
+    dest_name_full: Primary healthcare (DENUE)
+    domain: Health, education and care
+  ## Specialist and diagnostic clinics: 1,603 establishments in Mexicali.
+  ## Specialist medical and dental consulting rooms and medical /
+  ## diagnostic laboratories.
+  denue_medical_clinic:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('621113','621211','621212','621511')"
+    dest_name_full: Specialist and diagnostic clinics (DENUE)
+    domain: Health, education and care
+  ## Hospitals: 70 establishments in Mexicali.
+  ## General, psychiatric and other specialist hospitals, public and
+  ## private.
+  denue_hospital:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act LIKE '622%'"
+    dest_name_full: Hospitals (DENUE)
+    domain: Health, education and care
+  ## Care and social support services: 320 establishments in Mexicali.
+  ## Residential care, social work and orientation services, community
+  ## food and shelter services, and childcare.
+  denue_care_support:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act LIKE '623%' OR codigo_act LIKE '624%'"
+    dest_name_full: Care and social support services (DENUE)
+    domain: Health, education and care
+  ## Childcare: 81 establishments in Mexicali.
+  ## Guarderias, public and private; a subset of the care and social
+  ## support category above, reported separately because access to
+  ## childcare is asked for in its own right.
+  denue_childcare:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('624411','624412')"
+    dest_name_full: Childcare (DENUE)
+    domain: Health, education and care
+  ## Community and social facilities: 1,119 establishments in Mexicali.
+  ## Religious and civil associations, and public social welfare
+  ## administration.
+  denue_community:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('813210','813230','931610')"
+    dest_name_full: Community and social facilities (DENUE)
+    domain: Community, culture and recreation
+  ## Cultural facilities: 61 establishments in Mexicali.
+  ## Museums, libraries and archives, cinemas, and venues promoting
+  ## artistic and cultural events.
+  denue_culture:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('712111','712112','519211','519212','512130','711311','711312')"
+    dest_name_full: Cultural facilities (DENUE)
+    domain: Community, culture and recreation
+  ## Sports and active recreation: 317 establishments in Mexicali.
+  ## Sports clubs, fitness centres, golf courses, bowling alleys and
+  ## sports schools, public and private.
+  denue_sport:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('713941','713942','713943','713944','713910','713950','611621','611622')"
+    dest_name_full: Sports and active recreation (DENUE)
+    domain: Community, culture and recreation
+  ## Public recreation venues: 29 establishments in Mexicali.
+  ## Amusement and water parks, botanic gardens and zoos. Public open
+  ## space itself is derived from OpenStreetMap (the aos_* layers); this
+  ## complements rather than replaces it.
+  denue_recreation:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('713111','713112','713113','712131','712132')"
+    dest_name_full: Public recreation venues (DENUE)
+    domain: Community, culture and recreation
+  ## Any economic establishment: 38,385 establishments in Mexicali.
+  ## Every DENUE establishment, unfiltered. With ~38,000 points in
+  ## Mexicali, access to this is close to universal and so carries little
+  ## information; denue_employer_medium is the more discriminating
+  ## employment destination. Both are configured so the choice can be made
+  ## on the evidence.
+  denue_employment_any:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp
+    dest_name_full: Any economic establishment (DENUE)
+    domain: Employment
+  ## Employers of 11 or more people: 4,305 establishments in Mexicali.
+  ## DENUE records employment as a size band rather than a count, so this
+  ## filters on the band. Gravity-weighted reachable jobs (ULI
+  ## sub-variable 112) needs establishment-level job counts and a decay
+  ## model, and is not attempted here.
+  denue_employer_medium:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "per_ocu NOT IN ('0 a 5 personas','6 a 10 personas')"
+    dest_name_full: Employers of 11 or more people (DENUE)
+    domain: Employment
+  ## Manufacturing and industrial establishments: 2,581 establishments in Mexicali.
+  denue_manufacturing:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act LIKE '31%' OR codigo_act LIKE '32%' OR codigo_act LIKE '33%'"
+    dest_name_full: Manufacturing and industrial establishments (DENUE)
+    domain: Employment
+  ## Petrol stations: 232 establishments in Mexicali.
+  ## Reported for distance rather than access: proximity to a petrol
+  ## station is a disamenity (the ULI table cites evidence of increased
+  ## relative risk of childhood leukaemia within 250 m), so read
+  ## avg_walk_dist_denue_petrol_station as "higher is better".
+  denue_petrol_station:
+    <<: *denue
+    data: MX/INEGI/DENUE_2026/denue_inegi_02_.shp -where "codigo_act IN ('468411','468413')"
+    dest_name_full: Petrol stations (DENUE)
+    domain: Daily essential services
+OpenStreetMap:
+  ## Latest Geofabrik Mexico extract, which includes the streets contributed
+  ## to OpenStreetMap for the Condesa development.  The earlier
+  ## mexico-260409.osm.pbf predates those edits and mapped Condesa's internal
+  ## network only partially, which suppressed access estimates there.
+  ##
+  ## Those streets were mapped at 04:43 UTC on 15 August 2026.  The extract
+  ## holds edits to 20:21 UTC that day (its replication timestamp), but the
+  ## routable network, retrieved from Overpass, was until 26 September 2026
+  ## pinned to the start of the publication date and so omitted them (26
+  ## streets, leaving about 1,200 lots without estimates).  _03 now takes the
+  ## Overpass date from the extract's replication timestamp.
+  data_dir: MX/mexico-260815.osm.pbf
+  source: Geofabrik GmbH
+  publication_date: 20260815
+  licence: ODbL
+  url: https://download.geofabrik.de/north-america/mexico-latest.osm.pbf
+  note: Mexico OpenStreetMap excerpt
+network:
+  ## Custom pedestrian definition retaining private/gated access.  The
+  ## default excludes ["service"!~"private"]["access"!~"private"],
+  ## which would omit the internal streets of the Condesa development
+  ## and of Mexicali's gated communities -- precisely the areas of
+  ## interest here.
+  pedestrian: |
+      ["highway"]
+      ["area"!~"yes"]
+      ["highway"!~"motorway|proposed|construction|abandoned|platform|raceway|emergency_bay"]
+      ["service"!~"slipway|emergency_access|parking_aisle|driveway|drive-through"]
+      ["access"!~"no|forestry|emergency|delivery|agricultural|customers|military|permit|unknown"]
+  ## Retain gated communities
+  osmnx_retain_all: true
+  ## Network extraction restricted to the study region, not the
+  ## buffered region, to avoid crossing the US border (issue #610)
+  buffered_region: true
+## Shared accessibility specification (destinations, activity centres and
+## combined-access sets).  Declared under 'pedestrian' rather than at the
+## top level so that the cycling analysis keeps its globally comparable
+## default destinations; walking additionally measures the DENUE-derived
+## local set below.
+##
+## Walking access is judged at 300 m -- the five minute walk -- rather than
+## the 500 m used by the globally comparable core indicators.  In an arid city
+## where summer maxima exceed 45 °C, the distance people will walk is shorter,
+## and 300 m is also the distance Mexicali's own collector-road walkability
+## policy targets.  The core pct_access_500m_* indicators are still produced
+## unchanged, so that Mexicali remains comparable with other cities.
+##
+## Bands of 300 / 500 / 1000 / 1500 m are used rather than the single 300 m
+## threshold because the distance to the nearest destination is censored at
+## the largest band: a mean distance computed from 300 m-censored values would
+## be a mean among those who already have access, biased hardest exactly
+## where access is worst.  The 500 m band is the conventional walkable
+## neighbourhood, so that each indicator can also be read at the distance
+## used elsewhere (and the dashboard shows access across all four bands).  The
+## 1000 m band is retained for employment, which is judged at a longer
+## distance, and censoring at 1500 m keeps distances informative out to five
+## times the access threshold, which the soft thresholds of the composite
+## index below rely on.
+##
+## Outputs (in addition to, not instead of, the standard indicators.yml
+## walking indicators, which are unchanged):
+##   sample point   sp_walk_access_<name>_<d>m, sp_walk_nearest_node_<name>
+##   grid / areas   pct_access_walk_<name>_<d>m, avg_walk_dist_<name>
+##   city           pop_ prefixed, population weighted
+accessibility:
+  pedestrian:
+    distances: [300, 500, 1000, 1500]
+    destinations:
+    ## The global defaults, retained so that walking access and mean
+    ## walking distance are also reported for the comparable categories
+    ## and for the standard 400 m activity centre.
+    - {name: fresh_food_market,       category: food, variant: strict,  layer: destinations, where: "dest_name = 'fresh_food_market'"}
+    - {name: fresh_food_pooled,       category: food, variant: lenient, layer: destinations, where: "dest_name IN ('fresh_food_market', 'convenience')"}
+    ## Convenience stores alone: one of the three daily living destinations
+    ## of the walkability index, which walkability_variants below judges at
+    ## 300 and 500 m (the GHSCI index itself judges it at 500 m only).
+    - {name: convenience,             category: convenience, variant: any, layer: destinations, where: "dest_name = 'convenience'"}
+    - {name: public_open_space_large, category: pos,  variant: strict,  layer: aos_public_large_nodes_30m_line}
+    - {name: public_open_space_any,   category: pos,  variant: lenient, layer: aos_public_any_nodes_30m_line}
+    ## Blue space (ULI core measure 8, "Available natural blue spaces").  Two
+    ## separately named indicators rather than strict / lenient variants of one
+    ## category: reaching water and reaching a park that contains water are
+    ## different things, and neither is a stricter reading of the other.
+    ##
+    ## 'blue_space' is derived independently of the open space pipeline, from
+    ## water tags on both OpenStreetMap polygons and lines.  That matters here:
+    ## Mexicali's canals and drains are largely mapped as ways, which never enter
+    ## the polygon-based open space pipeline at all, and water is in any case
+    ## excluded from public open space so that a canal cannot chain contiguous
+    ## parks into one enormous area of open space.  Both rules are right for
+    ## parks and both would hide the canal network, so blue space is measured
+    ## separately rather than by relaxing them.
+    - {name: blue_space, category: blue_space, variant: any, layer: blue_space_nodes_30m_line}
+    - {name: public_open_space_with_water, category: public_open_space_with_water, variant: any, layer: aos_public_water_nodes_30m_line}
+    - {name: pt_frequent,             category: pt,   variant: strict,  layer: pt_stops_headway, where: "headway <= 20"}
+    - {name: pt_any,                  category: pt,   variant: lenient, layer: destinations, where: "dest_name = 'pt_any'"}
+    ## Mexicali's DENUE-derived functional categories (see
+    ## points_of_interest above for the SCIAN codes behind each).
+    - {name: denue_fresh_food, category: food_retail, variant: strict, layer: destinations, where: "dest_name = 'denue_fresh_food'"}
+    - {name: denue_food_retail, category: food_retail, variant: lenient, layer: destinations, where: "dest_name = 'denue_food_retail'"}
+    - {name: denue_bakery_tortilleria, category: bakery_tortilleria, variant: any, layer: destinations, where: "dest_name = 'denue_bakery_tortilleria'"}
+    - {name: denue_household_goods, category: household_goods, variant: any, layer: destinations, where: "dest_name = 'denue_household_goods'"}
+    - {name: denue_pharmacy, category: pharmacy, variant: any, layer: destinations, where: "dest_name = 'denue_pharmacy'"}
+    - {name: denue_finance_comms, category: finance_comms, variant: any, layer: destinations, where: "dest_name = 'denue_finance_comms'"}
+    - {name: denue_preschool, category: preschool, variant: any, layer: destinations, where: "dest_name = 'denue_preschool'"}
+    - {name: denue_primary_school, category: primary_school, variant: any, layer: destinations, where: "dest_name = 'denue_primary_school'"}
+    - {name: denue_secondary_school, category: secondary_school, variant: any, layer: destinations, where: "dest_name = 'denue_secondary_school'"}
+    - {name: denue_tertiary_education, category: tertiary_education, variant: any, layer: destinations, where: "dest_name = 'denue_tertiary_education'"}
+    - {name: denue_primary_healthcare, category: healthcare, variant: any, layer: destinations, where: "dest_name = 'denue_primary_healthcare'"}
+    - {name: denue_medical_clinic, category: clinic, variant: any, layer: destinations, where: "dest_name = 'denue_medical_clinic'"}
+    - {name: denue_hospital, category: hospital, variant: any, layer: destinations, where: "dest_name = 'denue_hospital'"}
+    - {name: denue_care_support, category: care, variant: any, layer: destinations, where: "dest_name = 'denue_care_support'"}
+    - {name: denue_childcare, category: childcare, variant: any, layer: destinations, where: "dest_name = 'denue_childcare'"}
+    - {name: denue_community, category: community, variant: any, layer: destinations, where: "dest_name = 'denue_community'"}
+    - {name: denue_culture, category: culture, variant: any, layer: destinations, where: "dest_name = 'denue_culture'"}
+    - {name: denue_sport, category: sport, variant: any, layer: destinations, where: "dest_name = 'denue_sport'"}
+    - {name: denue_recreation, category: recreation, variant: any, layer: destinations, where: "dest_name = 'denue_recreation'"}
+    ## Any community, cultural, sport or recreation establishment: the ULI
+    ## sub-variable "Access to community, culture and recreation services" is
+    ## one measure across the four, whose diversity is measured separately.
+    - {name: denue_ccr_any, category: community_culture_recreation, variant: any, layer: destinations, where: "dest_name IN ('denue_community', 'denue_culture', 'denue_sport', 'denue_recreation')"}
+    ## The three Employment functional categories are recorded separately
+    ## rather than pooled as strict / lenient variants of one category: any
+    ## establishment, employers of 11 or more, and manufacturing answer
+    ## different questions and are reported in their own right.
+    - {name: denue_employment_any, category: employment_any, variant: any, layer: destinations, where: "dest_name = 'denue_employment_any'"}
+    - {name: denue_employer_medium, category: employer_medium, variant: any, layer: destinations, where: "dest_name = 'denue_employer_medium'"}
+    - {name: denue_manufacturing, category: manufacturing, variant: any, layer: destinations, where: "dest_name = 'denue_manufacturing'"}
+    ## Petrol stations are a disamenity: the ULI sub-variable is the share of
+    ## the population living 250 m or more from one, citing evidence of
+    ## increased relative risk of childhood leukaemia within that distance.
+    ## 'direction: avoid' evaluates the threshold with that polarity --
+    ## pct_beyond_walk_denue_petrol_station_250m, higher is better -- which is
+    ## the spec-level counterpart of the greater_than_or_equal_to sample point
+    ## analyses in indicators.yml.  The 250 m band applies to this destination
+    ## alone; the mean distance is reported over the full 1500 m band as usual.
+    - {name: denue_petrol_station, category: petrol_station, variant: any, layer: destinations, where: "dest_name = 'denue_petrol_station'", distances: [250], direction: avoid}
+    ## Activity centres at the 300 m (five minute) walk the Mexicali
+    ## collector-road walkability policy targets, one per DENUE-SCIAN
+    ## group, plus a cross-group 'services' definition expressing the
+    ## policy's own wording -- a concentration of services within a five
+    ## minute walk.
+    ##
+    ## Tiers map a tier name to the destination variant it is built from.
+    ## Categories with a single 'any' variant resolve to their sole spec,
+    ## so a one-tier definition suffices for them.
+    activity_centres:
+      ## The global 400 m definition is switched off: the policy question
+      ## here is the 300 m one, and carrying both would double the
+      ## activity-centre variables to no purpose.
+      standard: false
+      essentials:
+        walk_threshold: 300
+        categories: [food_retail, household_goods, pharmacy]
+        tiers: {local: lenient, complete: strict}
+      health:
+        walk_threshold: 300
+        categories: [healthcare, primary_school, care]
+        tiers: {all: any}
+      civic:
+        walk_threshold: 300
+        categories: [community, culture, sport]
+        tiers: {all: any}
+      ## The Employment group contains only employment categories, so a
+      ## centre built from it alone would reduce to the employment
+      ## destination itself.  It is defined here as a mixed-use
+      ## employment centre instead: work co-located with daily food
+      ## retail and public transport.
+      jobs:
+        walk_threshold: 300
+        categories: [employer_medium, food_retail, pt]
+        tiers: {local: lenient, complete: strict}
+      ## The policy indicator: a concentration of services across groups.
+      services:
+        walk_threshold: 300
+        categories: [food_retail, pharmacy, healthcare, primary_school, community]
+        tiers: {local: lenient, complete: strict}
+    ## Diversity of what is reachable (ULI sub-variables 39, 46, 48 and 52,
+    ## "Diversity of available ..."), as distinct from whether anything is
+    ## reachable at all.  Somewhere with five minisupers and somewhere with a
+    ## butcher, a greengrocer, a dairy and a supermarket have identical access
+    ## to fresh food, and should not have identical diversity of it.
+    ##
+    ## Each set reports, per band: a count per sub-type
+    ## (avg_count_walk_<set>__<sub-type>_<d>m), the normalised Shannon entropy
+    ## of those counts (avg_diversity_walk_<set>_<d>m, 0-1) and the share of
+    ## sub-types with anything reachable (avg_richness_walk_<set>_<d>m, 0-1).
+    ##
+    ## The number of sub-types is fixed here rather than by what happens to be
+    ## present locally, so the scores are comparable between areas.  Sub-types
+    ## are drawn from the DENUE-SCIAN worksheet's functional categories, and
+    ## every code below was confirmed present in the Mexicali extract.
+    ##
+    ## Bands follow the walking bands (300 / 500 / 1000 / 1500 m), so that every
+    ## pedestrian measure can be read at the same four distances.  The ULI
+    ## judges diversity at 500 m: at 300 m most points reach one sub-type or
+    ## none, which says little about diversity, and 1500 m is the censoring
+    ## distance rather than a walk anyone is assumed to make.
+    diversity:
+      ## Sub-types within one imported category, separated by activity code
+      ## (hence keep_columns: codigo_act above), plus bakeries and tortillerias,
+      ## which SCIAN classifies as manufacturing and which are therefore a
+      ## separate category rather than a code subset.
+      fresh_food:
+        distances: [300, 500, 1000, 1500]
+        groups:
+          meat: "dest_name = 'denue_fresh_food' AND tags->>'codigo_act' IN ('461121','461122','461123')"
+          produce: "dest_name = 'denue_fresh_food' AND tags->>'codigo_act' = '461130'"
+          grains_and_spices: "dest_name = 'denue_fresh_food' AND tags->>'codigo_act' = '461140'"
+          dairy: "dest_name = 'denue_fresh_food' AND tags->>'codigo_act' = '461150'"
+          supermarket: "dest_name = 'denue_fresh_food' AND tags->>'codigo_act' = '462111'"
+          minisuper: "dest_name = 'denue_fresh_food' AND tags->>'codigo_act' = '462112'"
+          bakery_tortilleria: "dest_name = 'denue_bakery_tortilleria'"
+      ## Sub-types that are already separate imported categories, so no code
+      ## filtering is needed.  A school combining several levels (611171 /
+      ## 611172) is imported under each level it serves and so counts towards
+      ## each, which is the intended reading: a school serving that level is
+      ## available.
+      education:
+        distances: [300, 500, 1000, 1500]
+        groups:
+          preschool: "dest_name = 'denue_preschool'"
+          primary: "dest_name = 'denue_primary_school'"
+          secondary: "dest_name = 'denue_secondary_school'"
+          tertiary: "dest_name = 'denue_tertiary_education'"
+      ## denue_childcare is a subset of denue_care_support, so only the broader
+      ## category is used here; counting both would count a creche twice and
+      ## overstate the evenness of what is available.
+      health_care:
+        distances: [300, 500, 1000, 1500]
+        groups:
+          primary_healthcare: "dest_name = 'denue_primary_healthcare'"
+          specialist_clinic: "dest_name = 'denue_medical_clinic'"
+          hospital: "dest_name = 'denue_hospital'"
+          pharmacy: "dest_name = 'denue_pharmacy'"
+          care_support: "dest_name = 'denue_care_support'"
+      ## Diversity of care services (ULI sub-variable "Diversity of care
+      ## services"): the SCIAN groups within care and social support.
+      ## Childcare is taken from the care category by code, not from
+      ## denue_childcare, so that no establishment is counted twice.
+      care:
+        distances: [300, 500, 1000, 1500]
+        groups:
+          childcare: "dest_name = 'denue_care_support' AND tags->>'codigo_act' IN ('624411','624412')"
+          residential_care: "dest_name = 'denue_care_support' AND tags->>'codigo_act' LIKE '623%'"
+          social_assistance: "dest_name = 'denue_care_support' AND tags->>'codigo_act' LIKE '624%' AND tags->>'codigo_act' NOT IN ('624411','624412')"
+      community_culture_rec:
+        distances: [300, 500, 1000, 1500]
+        groups:
+          community: "dest_name = 'denue_community'"
+          culture: "dest_name = 'denue_culture'"
+          sport: "dest_name = 'denue_sport'"
+          recreation: "dest_name = 'denue_recreation'"
+    combined_access:
+      ## 'All categories reachable from home', as distinct from the
+      ## activity centres above ('all categories co-located with each
+      ## other').  The bare all_strict / all_lenient composite is pinned
+      ## to the global trio; without this it would widen to every
+      ## category having strict and lenient variants, including the
+      ## DENUE ones, and stop meaning what its name says.
+      standard: {categories: [food, pos, pt]}
+      essentials: {categories: [food_retail, household_goods, pharmacy]}
+      services: {categories: [food_retail, pharmacy, healthcare, primary_school, community]}
+  ## Straight-line catchments for emergency services (ULI sub-variables 174,
+  ## police station, and 69, fire station), from the IMIP equipamiento layer.
+  ## These services are provided across catchments far larger than a walk,
+  ## and an emergency response does not follow footpaths, so coverage is
+  ## measured as the straight-line distance to the nearest station rather
+  ## than along the pedestrian network.  The distances are provisional,
+  ## pending evidence for an appropriate response distance.
+  ##
+  ## Outputs: sp_euclid_dist_<name> and sp_euclid_access_<name>_<d>m at
+  ## sample points, aggregated to pct_access_euclid_<name>_<d>m and
+  ## avg_euclid_dist_<name> (pop_ prefixed for population weighted values).
+  ##
+  ## A 75 km fire station catchment reaches every location in the study
+  ## region, so it reports universal coverage: it is recorded for
+  ## completeness, and is not used in the composite index below, which would
+  ## leave out an indicator that does not vary in any case.  The police
+  ## station distance is measured out to 45 km (max_distance), three times
+  ## its 15 km threshold, so that the composite index can use it through a
+  ## soft threshold.
+  euclidean:
+    destinations:
+      - name: imip_police_station
+        dest_name_full: Police stations (IMIP)
+        data: MX/CFC/cleaned/por_estado/02_baja_california/002_mexicali/imip/equipamiento_combined.fgb -where "TIPO = 'INSTALACIONES POLICIALES'"
+        distances: [15000]
+        max_distance: 45000
+        source: IMIP / CFC
+        licence: Provided by IMIP via CFC
+        notes: 27 police facilities in the IMIP equipamiento layer (administración pública).
+      - name: imip_fire_station
+        dest_name_full: Municipal fire stations (IMIP)
+        data: MX/CFC/cleaned/por_estado/02_baja_california/002_mexicali/imip/equipamiento_combined.fgb -where "TIPO = 'ESTACION DE BOMBEROS MUNICIPAL'"
+        distances: [75000]
+        source: IMIP / CFC
+        licence: Provided by IMIP via CFC
+        notes: 10 municipal fire stations in the IMIP equipamiento layer (administración pública).
+## Cycling Level of Traffic Stress (LTS) accessibility analysis with
+## default settings, matching MX_Mexicali_2025-MZA-cycling.yml
+cycling_indicators: true
+country_gdp:
+  classification: Upper middle income
+  citation: "The World Bank. 2026. World Bank country and lending groups: Current classification by income in XLSX format. https://ddh-openapi.worldbank.org/resources/DR0095333/download"
+## Google Earth Engine indicators: Large Public Urban Green Space
+## (LPUGS) accessibility, and the Global Urban Heat Vulnerability
+## Index (GUHVI).  Requires the Earth Engine container; if run
+## elsewhere these are skipped with a message rather than failing.
+gee: true
+policy_review: process/data/MX/Baja_California_Mexicali_gohsc-policy-indicator-checklist.xlsx
+reporting:
+  ## Each language's conceptual model is offered in the dashboard (a
+  ## 'Conceptual model' button) with a summary of the index's method.  It may
+  ## be an svg, png, jpg, webp or pdf, relative to process/data.  Listing
+  ## languages here also sets the languages reports are generated in.
+  languages:
+    English:
+      name: Mexicali
+      country: Mexico
+      conceptual_model: 'MX/Mexicali Liveability/Urban Liveability Mexicali - English.svg'
+    Spanish - Latin America:
+      name: Mexicali
+      country: México
+      conceptual_model: 'MX/Mexicali Liveability/Urban Liveability Mexicali - Spanish.svg'
+  templates:
+    - spatial_ee
+  publication_ready: false
+  study_region_context_basemap: 'satellite'
+  custom_text_box_fontsize: 11
+  doi: ""
+  images:
+    1:
+        file: 'MX/images/La Chinesca.jpeg'
+        description: La Chinesca, Mexicali
+        credit: 'La Chinesca, Alejandro Gonzalez, 2024'
+    2:
+        file: 'MX/images/Lago del Bosque de la Ciudad.jpeg'
+        description: Lago del Bosque de la Ciudad, Mexicali
+        credit: 'Lago del Bosque de la Ciudad, Juan Díaz, 2025'
+    3:
+        file: 'MX/images/Mexicali.jpeg'
+        description: Mexicali
+        credit: 'Mexicali, Alejandro Gonzalez, 2024'
+    4:
+        file: 'MX/images/Mexicali.jpeg'
+        description: Mexicali
+        credit: 'Mexicali, Alejandro Gonzalez, 2024'
+
+## Externally prepared indicators, linked as delivered (linkage_indicators;
+## see process/subprocesses/_linkage_indicators.py).
+##
+## Both sources are summarised for the reporting areas of
+## 'Mexicali Liveability/geography/mexicali_reference_areas.gpkg': the 100 m
+## grid (whose area_id is GHSCI's grid_id), AGEBs and manzanas (INEGI cvegeo),
+## and the Condesa lots and fraccionamientos (their 'id' and 'fid').  Values
+## are linked onto each matching aggregation, summarised for the regions, and
+## brought down to sample points -- replicated from the area containing each
+## point -- so that the Urban Liveability Index, scored at sample points, can
+## use them.
+linkage_indicators:
+  ## Modelled outdoor thermal comfort (UTCI) on the hottest day of 2023
+  ## (21 July; SOLWEIG, MMML airport forcing), over pedestrian surfaces only.
+  ## Read the README before publishing figures: air temperature, humidity and
+  ## wind are spatially uniform, so only radiant temperature (sun and shade)
+  ## varies across the city; most values exceed the UTCI polynomial's fitted
+  ## range; and comparisons within a neighbourhood are sound where rankings of
+  ## neighbourhoods kilometres apart are not.  Units with fewer than 100
+  ## pedestrian pixels are masked ('reliable').
+  ##
+  ## Only daytime thermal comfort is linked.  Night-time UTCI varies by
+  ## fractions of a degree across the city (30.3-30.6 °C): it acts either as a
+  ## constant or, once normalised, exaggerates differences that do not matter.
+  utci:
+    data: MX/UTCI - 2026-08-25/mexicali_utci_2023-07-21.gpkg
+    match: id
+    id: area_id
+    mask: reliable
+    label: {es: Confort térmico exterior (UTCI), en: Outdoor thermal comfort (UTCI)}
+    source: Rossano Schifanella (WP02); SOLWEIG and the UTCI operational polynomial (Bröde et al. 2012)
+    licence: Terrain from FABDEM v1 (CC BY-NC-SA 4.0, non-commercial); other inputs CC BY 4.0 or public domain
+    notes: 'Modelled day 2023-07-21 (Tmax 48.5 °C).  See README_mexicali_utci.md, sections 3.1 and 5, for forcing and limitations.'
+    columns:
+      utci_day_mean:
+        label: {es: 'Confort térmico diurno (UTCI medio)', en: 'Daytime thermal comfort (mean UTCI)'}
+        units: °C
+        direction: lower_is_better
+        description: Unit mean of the daytime mean Universal Thermal Climate Index (hours with sunlight), over pedestrian surfaces, on the hottest day of 2023.
+      utci_peak:
+        label: {es: 'UTCI máximo (17:00)', en: 'Peak UTCI (17:00)'}
+        units: °C
+        direction: lower_is_better
+        description: Unit mean of the daily maximum Universal Thermal Climate Index (effectively 17:00), over pedestrian surfaces, on the hottest day of 2023.
+    areas:
+      grid: grid_100m
+      agebs: agebs
+      manzanas: manzanas
+      condesa_lotes: {layer: condesa_lotes, boundary_id: id}
+      condesa_fraccionamientos: {layer: condesa_fraccionamientos, boundary_id: fid}
+      region_mexicali: region
+      region_condesa: region
+    ## the 100 m grid tiles the study region: sample points lie on streets,
+    ## between blocks, so a block layer would leave most of them unvalued
+    sample_points: [grid_100m]
+  ## Indicators prepared by the ULI work packages (final_indicators.gpkg,
+  ## 22 September 2026).  The file carries no identifiers, so features are
+  ## identified by geometry against the reference areas: grid, AGEB, lot and
+  ## fraccionamiento features are identical to them, and manzanas are matched
+  ## by their largest overlap (several delivered parts of one multipart block
+  ## are combined as an area weighted mean).
+  ##
+  ## Missing flood values are taken as no exposure (null_as), which is an
+  ## assumption pending confirmation from the work package: without it the
+  ## flood indicators would be missing almost everywhere, and so would every
+  ## index score using them.  Tree canopy (210 manzanas) and protected cycle
+  ## lanes (all but a few zero) are linked for reference only, being too
+  ## sparse to use in the index.
+  external:
+    data: MX/Update_on_ULI - 2026-09-22/final_indicators.gpkg
+    match: geometry
+    reference: MX/Mexicali Liveability/geography/mexicali_reference_areas.gpkg
+    reference_layers: {grid: grid_100m}
+    prefix: ext_
+    label: {es: Indicadores de los paquetes de trabajo, en: Work package indicators}
+    source: Mexicali ULI work packages (final_indicators.gpkg; see excel_work_sheet_key.xlsx)
+    null_as: {pop_affected_flood: 0, flood_area_m2: 0}
+    columns:
+      ndvi:
+        label: {es: Cobertura vegetal (NDVI), en: Vegetation cover (NDVI)}
+        units: NDVI
+        direction: higher_is_better
+      tree_canopy_pct:
+        label: {es: Cobertura arbórea, en: Tree canopy cover}
+        units: '%'
+        direction: higher_is_better
+      avg_walk_dist_park_m:
+        label: {es: Distancia a parques (paquete de trabajo), en: Distance to parks (work package)}
+        units: m
+        direction: lower_is_better
+      major_road_length_300m:
+        label: {es: Vialidades principales en 300 m, en: Major roads within 300 m}
+        units: m
+        direction: lower_is_better
+      pop_affected_flood:
+        label: {es: Población expuesta a inundaciones, en: Population exposed to flooding}
+        units: persons
+        direction: lower_is_better
+      flood_area_m2:
+        label: {es: Área de inundación en vialidades principales, en: Flooded area on main roads}
+        units: m²
+        direction: lower_is_better
+      block_perimeter_m:
+        label: {es: Tamaño de manzana (perímetro), en: Block size (perimeter)}
+        units: m
+        direction: lower_is_better
+      residential_area_ha:
+        label: {es: Uso de suelo residencial, en: Residential land use}
+        units: ha
+      commercial_area_ha:
+        label: {es: Uso de suelo comercial, en: Commercial land use}
+        units: ha
+      land_use_entropy:
+        label: {es: Mezcla de usos de suelo, en: Land use mix}
+        units: index 0-1
+        direction: higher_is_better
+      economic_sector_diversity:
+        label: {es: Diversidad de empleos, en: Job diversity}
+        units: index 0-1
+        direction: higher_is_better
+      protected_cycling_street_pct:
+        label: {es: Cobertura de ciclovías protegidas, en: Protected cycle lane coverage}
+        units: '%'
+        direction: higher_is_better
+    areas:
+      grid: grid
+      agebs: agebs
+      manzanas: manzanas
+      condesa_lotes: {layer: condesa_lotes, boundary_id: id}
+      condesa_fraccionamientos: {layer: condesa_fraccionamientos, boundary_id: fid}
+    ## the grid first, as it tiles the region; flood values exist only for
+    ## blocks and lots, so points take them from the nearest within the
+    ## distance each is aggregated over
+    sample_points:
+      - {layer: grid}
+      - {layer: condesa_lotes, within: 15}
+      - {layer: manzanas, within: 30}
+
+## Walkability at 300 m, and walkability attenuated by thermal comfort
+## (walkability_variants; see process/subprocesses/_walkability_variants.py).
+##
+## The Mexicali walkability index judges its daily living score -- access to a
+## fresh food market, a convenience store and public transport -- at 300 m,
+## the five minute walk of the city's own walkability policy, and is z-scored
+## with local population and intersection density as the GHSCI index is.
+##
+## It is also attenuated by daytime thermal comfort ('t', the daytime mean
+## UTCI): the index's percentile rank is multiplied by (1 - 0.5 h'), where h'
+## is thermal comfort re-scaled to 0-1 between 30 and 50 °C, so that shade
+## cannot make up for having nothing to walk to.  The fixed range judges heat
+## absolutely: on the modelled day most of the city lies between 43.8 and
+## 46.0 °C (its 5th and 95th percentiles), all of it very hot, and re-scaling
+## between those percentiles would have treated the least hot as comfortable
+## (decided 25 September 2026).  30 °C lies in UTCI's moderate heat stress
+## band (26-32 °C), and 50 °C beyond its extreme heat stress threshold (46 °C).  The attenuated form is
+## the ULI's default (sp_walk_idx_300_tm).  The daytime mean is used rather
+## than the 17:00 peak: it spans the daylight hours in which people walk, and
+## it is the peak that most exceeds the UTCI polynomial's fitted range.  The
+## percentile bounds used are recorded with the results, and the dashboard
+## plots the attenuation they imply.
+##
+## (Additive forms, the 500 m distance and GUHVI adjustments were explored in
+## September 2026 and retired: the ULI dashboard offers attenuation on or off.)
+walkability_variants:
+  distances: [300]
+  daily_living: [fresh_food_market, convenience, pt_any]
+  heat:
+    t: {variable: sp_utci_day_mean, range: [30, 50], label: {es: confort térmico, en: thermal comfort}}
+  sets: [t]
+  forms: [multiplicative]
+  attenuation: 0.5
+  percentiles: [5, 95]
+
+## Índice de entornos vivibles para Mexicali (Urban Liveability Index).
+##
+## Indicators.  Every sub-variable of the project's ULI variable sheet
+## (Update_on_ULI - 2026-09-22/excel_work_sheet_key.xlsx, sheet 'Current
+## version of subvariable-', revised 25 September 2026) whose data have been
+## delivered and vary across the city, marked in its column A or not.  Where
+## the sheet pairs 'access to X' with 'percentage of the population with
+## access to X', one indicator serves both: at a sample point they are the same
+## measure.  Whether each is appropriate is to be investigated once the index
+## is built.
+##
+## Domains.  The sheet assigns many sub-variables to several domains of the
+## Adapted Urban Liveability Framework: walkability to the built environment,
+## mobility and transport, and social infrastructure, say.  Each indicator is
+## listed once with every domain the sheet gives it ('domains'), and counts an
+## equal share of its weight in each (a third in each of three), so that its
+## shares add up to the weight of an indicator in one domain alone: shared
+## indicators gain no extra weight (decided 25 September 2026).  Its score is
+## the same in each domain.  The sheet's 'Built Infrastructure' is read as the
+## built environment.  Domains are listed alphabetically (in English), as the
+## dashboard presents them; Housing and Sociodemographic characteristics have
+## no indicator yet, and are described but not scored.
+##
+## Because each domain is an equal pillar of the index, an indicator's
+## effective weight still depends on how many others share its domains: each
+## of Safety's five counts for about 6% of the index's mean level, and each of
+## social infrastructure's eight access and diversity indicators for under 2%.
+## The effective weights are recorded with the parameters and shown on the
+## dashboard.  Shared indicators also make the domains' scores move together,
+## so the index penalises imbalance between domains less.  Against placing
+## each indicator in the first domain the sheet names (25 September 2026):
+## mean penalty 0.48 rather than 1.08, effective weights 1.7-6.2% rather than
+## 1.4-16.7% (public transport alone would have been all of mobility), and a
+## rank correlation of 0.97 between the two
+## (Mexicali Liveability/build/_work/uli_sharing_sensitivity.py).
+##
+## Thermal comfort (core measure 1, daytime UTCI) enters in one of two ways,
+## never both:
+##   - by default, through walkability attenuated by thermal comfort
+##     (sp_walk_idx_300_tm; see walkability_variants above), in which case the
+##     ambient thermal comfort indicator is listed but inactive;
+##   - in the 'plain' variant (uli_plain), walkability is not attenuated and
+##     thermal comfort is scored as an ambient environment indicator instead.
+##
+## Deliberately not included (see the sheet's rows):
+##   - flooding (population exposed; flooded area on main roads): the delivered
+##     values are missing for almost every area (none on the grid), pending the
+##     work package's reply on whether missing means no exposure;
+##   - tree canopy (210 manzanas, no grid values) and protected cycle lanes
+##     (almost all zero) are too sparse to vary;
+##   - heat exposure (core measure 3: land surface temperature, extreme heat
+##     frequency, night-time heat retention) awaits delivery, as do sidewalk
+##     coverage, street lighting, bicycle lane coverage, reachable jobs and
+##     access to basic services (Housing);
+##   - crime exposure is one municipal rate for every location, so it cannot
+##     distinguish between them;
+##   - large public open space availability (the share of an area's land
+##     that is large public green space) describes an area, not a sample
+##     point, so has no sample point form yet; access to large public green
+##     space, from the core GHSCI workflow, is included (lpugs);
+##   - net residential density, commercial land use and land use mix
+##     (final_indicators.gpkg) are the components of the walkability core
+##     measure, which walkability itself represents: scoring them as well would
+##     count density twice.  They remain in the general dashboard;
+##   - night-time thermal comfort varies too little within the city.
+##
+## Police and fire station coverage use the thresholds the work package
+## revised (2 km and 3 km, straight-line, as NFPA 1710's four minute response
+## at 45 km/h; the 15 km and 70 km first proposed cover the whole city) as soft
+## thresholds on the straight-line distances already measured
+## (accessibility.euclidean).
+##
+## Method: the Adjusted Mazziotta-Pareto Index (AMPI; Mazziotta & Pareto
+## 2018), building on the Urban Liveability Index of Higgs et al. (2019).
+## Each indicator is re-scaled against goalposts spanning its observed range
+## and centred on its mean over the study region's sample points (the GUHVI
+## sub-indices use their own 0-100 scale as goalposts).  Scores are calculated
+## with that mean at 100, since the penalty divides by the mean level, and
+## reported less 100 ('centre: 0'), so that 0 means 'as good as the study
+## region average'.  A domain's score is the weighted mean of its re-scaled
+## indicators less a penalty for how unbalanced they are, so that doing well
+## on one cannot wholly make up for doing badly on another; the index is the
+## same composite of the domain scores (weighted form, Mazziotta & Pareto
+## 2022).  An indicator in k domains counts 1/k of its weight in each.
+## Scores are computed at sample points, averaged to grid cells, and
+## summarised for larger areas as population-weighted averages.
+##
+## The goalposts used are written to
+## MX_Mexicali_2025_ULI_composite_<name>_parameters.yml.  Scores are
+## comparable over time only against the same goalposts.
+##
+## Distances enter through soft thresholds rather than as binary access (0.5
+## at the threshold, 0 where nothing was found within the distance searched),
+## except natural blue space, scored by the sheet's ladder ('steps').
+##
+## 'group' (the sheet's core measure), 'subdomain', 'description', 'about' and
+## 'sources' are presentation only; they alter no score.  Domain and subdomain
+## definitions are the sheet's 'domain definitions'.  The Spanish core measure
+## names were drafted on 25 September 2026 and await review, as does the
+## 'about' and 'sources' text of each indicator.
+composite_indices:
+  uli:
+    label:
+      es: Índice de entornos vivibles para Mexicali
+      en: Mexicali Urban Liveability Index
+    description:
+      es: Promedio de las puntuaciones de los dominios del Índice de entornos vivibles para Mexicali, cada una resumen de sus subindicadores normalizados, menos una penalización por la variación entre dominios que premia un desempeño equilibrado. Se expresa en puntos por encima o por debajo del promedio de la región de estudio (0).
+      en: Average of the Mexicali Urban Liveability Index's domain scores, each summarising its normalised sub-indicators, less a penalty for variation across domains that rewards balanced performance. Expressed as points above or below the study region average (0).
+    about:
+      es: 'El Índice de entornos vivibles se basa en el Índice ajustado de Mazziotta-Pareto (AMPI): cada subindicador se reescala de modo que 0 es el promedio de la región de estudio (su media en todos los puntos de muestra), y las puntuaciones son puntos por encima o por debajo de él. Cada dominio es la media ponderada de sus subindicadores menos una penalización por el desequilibrio entre ellos, y el índice es, del mismo modo, la media de los dominios menos una penalización por el desequilibrio entre dominios. Un subindicador que atañe a varios dominios cuenta en cada uno con una parte igual de su peso (un tercio en cada uno de tres), de modo que en total no pesa más que uno de un solo dominio. Se calcula en puntos de muestra a lo largo de la red peatonal, se promedia a las celdas de la cuadrícula y, ponderado por población, a áreas mayores.'
+      en: 'The Urban Liveability Index draws on the Adjusted Mazziotta-Pareto Index (AMPI): each sub-indicator is re-scaled so that 0 is the study region average (its mean over all sample points), and scores are points above or below it. Each domain is the weighted mean of its sub-indicators less a penalty for imbalance between them, and the index is likewise the mean of the domains less a penalty for imbalance between domains. A sub-indicator bearing on several domains counts an equal share of its weight in each (a third in each of three), so that in all it weighs no more than one in a single domain. Scored at sample points along the pedestrian network, and averaged to grid cells and, weighted by population, to larger areas.'
+    sources:
+      - 'Mazziotta, M. & Pareto, A. (2018) Measuring well-being over time: the Adjusted Mazziotta-Pareto Index versus other non-compensatory indices. Social Indicators Research 136, 967-976.'
+      - 'Mazziotta, M. & Pareto, A. (2022) Weighted composite indices: the case of the Mazziotta-Pareto Index. Rivista Italiana di Economia Demografia e Statistica 76(4), 17-26.'
+      - 'Higgs, C. et al. (2019) The Urban Liveability Index: developing a policy-relevant urban liveability composite measure and evaluating associations with transport mode choice. International Journal of Health Geographics 18, 14.'
+      - 'OECD & JRC (2008) Handbook on Constructing Composite Indicators: Methodology and User Guide. OECD Publishing, Paris.'
+      - 'Population: GHS-POP R2023A (JRC) and INEGI Censo 2020; Condesa lots at an assumed 3.2 residents each.'
+    method: ampi
+    ## Scores are reported as points above or below the reference (the study
+    ## area's average), 0, rather than about 100: calculated on the scale
+    ## centred at 100, as the penalty divides by the mean, then less 100
+    ## (decided 25 September 2026).
+    centre: 0
+    ## Presentation colours are those of the Adapted Urban Liveability
+    ## Framework figure (Urban Liveability Mexicali - English.pdf), read from
+    ## the PDF by "Mexicali Liveability/build/conceptual_model_svg.py".
+    colour: '#4E8EF7'
+    domains:
+      ambient_environment:
+        label: {es: 'Entorno medioambiental', en: 'Ambient environment'}
+        colour: {fill: '#D9F4CD', stroke: '#2E6417'}
+        about:
+          es: 'La calidad de las condiciones ambientales a las que están expuestos los residentes a diario. Ejemplos: aire, agua, ruido y temperatura.'
+          en: 'The quality of environmental conditions to which residents are exposed every day. Examples include air, water, noise and temperature.'
+        subdomains:
+          climate_risks:
+            label: {es: 'Riesgos climáticos', en: 'Climate risks'}
+            about:
+              es: 'Los efectos del cambio climático a escala de barrio y la capacidad para adaptarse a ellos y mitigarlos. Ejemplos: islas de calor, riesgo de inundaciones y fenómenos meteorológicos extremos.'
+              en: 'The effects of climate change at neighbourhood scale and the capacity to adapt to and mitigate them. Examples include heat islands, flood risk and extreme weather events.'
+          ambient:
+            label: {es: 'Medioambiente', en: 'Ambient'}
+            about:
+              es: 'Condiciones biofísicas y ambientales del entorno inmediato, que abarcan factores como ruido, agua, suelo, vegetación y confort térmico, que inciden de manera directa en la salud, la comodidad y el bienestar físico de los habitantes.'
+              en: 'Biophysical and environmental conditions of the immediate surroundings, encompassing factors such as noise, water, soil, vegetation and thermal comfort, which directly affect residents’ health, comfort and physical well-being.'
+          natural_resources:
+            label: {es: 'Recursos', en: 'Natural resources'}
+            about:
+              es: 'Disponibilidad, acceso, preservación y gestión sostenible de los recursos naturales y servicios básicos esenciales, como el agua, la tierra y el manejo de residuos sólidos, fundamentales para el sostenimiento ecológico y el funcionamiento continuo de la comunidad.'
+              en: 'Availability, access, preservation and sustainable management of natural resources and essential basic services, such as water, land and solid-waste management, which are fundamental to ecological sustainability and the community’s continued functioning.'
+      built_environment:
+        label: {es: 'Ambiente construido', en: 'Built environment'}
+        colour: {fill: '#FFC2E8', stroke: '#FF66C4'}
+        about:
+          es: 'El entorno físico creado por el ser humano, cuya densidad, combinación de usos del suelo y conectividad dan forma a la vida cotidiana. Ejemplos: edificios, calles y espacios públicos.'
+          en: 'The physical environment created by people, whose density, mix of land uses and connectivity shape everyday life. Examples include buildings, streets and public spaces.'
+        subdomains:
+          urban_morphology:
+            label: {es: 'Morfología urbana', en: 'Urban morphology'}
+            about:
+              es: 'La forma física, la estructura y el diseño del tejido urbano, elementos que determinan cómo se organiza el espacio y cómo influye esto en la experiencia de habitar la ciudad.'
+              en: 'The physical form, structure and design of the urban fabric, which determine how space is organised and how this influences the experience of living in the city.'
+          urban_design:
+            label: {es: 'Diseño urbano', en: 'Urban design'}
+            about:
+              es: 'Configuración y calidad de los espacios, calles y elementos que conforman la ciudad, incluyendo la infraestructura peatonal, ciclista y vial, así como el paisaje urbano, que influyen en la movilidad, la accesibilidad, la seguridad, la conectividad y la experiencia cotidiana de las personas.'
+              en: 'Configuration and quality of the spaces, streets and elements that make up the city, including pedestrian, cycling and road infrastructure, as well as the urban landscape, which influence mobility, accessibility, safety, connectivity and people’s everyday experience.'
+          green_blue_infrastructure:
+            label: {es: 'Infraestructura verde y azul', en: 'Green and blue infrastructure'}
+            about:
+              es: 'Red de espacios verdes y elementos acuáticos, como parques, árboles, ríos, canales, humedales y sistemas de gestión de aguas pluviales, que proporcionan servicios ecosistémicos, contribuyen a la regulación climática, favorecen la actividad física y las actividades recreativas, y promueven la salud mental.'
+              en: 'Network of green spaces and water features, such as parks, trees, rivers, canals, wetlands and stormwater-management systems, that provide ecosystem services, contribute to climate regulation, support physical activity and recreation, and promote mental health.'
+      economic_development:
+        label: {es: 'Desarrollo económico', en: 'Economic development'}
+        colour: {fill: '#CAF5F7', stroke: '#0CC0DF'}
+        about:
+          es: 'Las condiciones económicas locales que ofrecen a los residentes oportunidades de empleo productivo, ingresos justos y participación económica.'
+          en: 'Local economic conditions that offer residents opportunities for productive employment, fair income and economic participation.'
+        subdomains:
+          food_environment:
+            label: {es: 'Ambiente de alimentación', en: 'Food environment'}
+            about:
+              es: 'Presencia, proximidad y diversidad de establecimientos de abasto de alimentos, tales como supermercados y destinos de conveniencia, que determinan la facilidad y equidad con la que los habitantes acceden a insumos alimenticios en su entorno inmediato.'
+              en: 'Presence, proximity and diversity of food retail establishments, such as supermarkets and convenience destinations, that determine the ease and equity with which residents access food supplies in their immediate surroundings.'
+          resources:
+            label: {es: 'Recursos', en: 'Resources'}
+            about:
+              es: 'Disponibilidad, acceso, cobertura y suministro continuo de servicios e insumos energéticos esenciales, como la energía eléctrica y combustibles, necesarios para el funcionamiento de las actividades productivas, comerciales y del hogar.'
+              en: 'Availability, access, coverage and continuous supply of essential energy services and inputs, such as electricity and fuels, needed for productive, commercial and household activities.'
+          economy:
+            label: {es: 'Economía', en: 'Economy'}
+            about:
+              es: 'Dinamismo y estructura de la actividad productiva local, que abarca la presencia y distribución del comercio minorista, la industria y las fuentes de empleo, los cuales generan oportunidades laborales, ingresos y sustento económico para la población urbana.'
+              en: 'Dynamism and structure of local productive activity, including the presence and distribution of retail, industry and employment sources, which generate job opportunities, income and economic support for the urban population.'
+      housing:
+        label: {es: 'Vivienda', en: 'Housing'}
+        colour: {fill: '#C2CDFF', stroke: '#4F81BD'}
+        about:
+          es: 'La disponibilidad, la asequibilidad y la idoneidad de las opciones de vivienda que satisfacen las diversas necesidades de los residentes de una colonia.'
+          en: 'The availability, affordability and suitability of housing options that meet the diverse needs of neighbourhood residents.'
+      mobility_transport:
+        label: {es: 'Movilidad y transporte', en: 'Mobility and transport'}
+        colour: {fill: '#C7FAE9', stroke: '#3BBFA3'}
+        about:
+          es: 'Las redes y los sistemas que permiten desplazarse de forma eficiente entre el hogar, el trabajo y los servicios.'
+          en: 'Networks and systems that enable efficient travel between home, work and services.'
+        subdomains:
+          public_transport:
+            label: {es: 'Transporte público', en: 'Public transport'}
+            about:
+              es: 'Los sistemas de transporte público que conectan a los residentes con el trabajo, la educación y los servicios.'
+              en: 'Public transport systems that connect residents with work, education and services.'
+          active_mobility:
+            label: {es: 'Movilidad activa', en: 'Active mobility'}
+            about:
+              es: 'Las condiciones del entorno urbano que facilitan los medios de transporte no motorizados, a pie y en bicicleta, como las redes viarias conectadas, permeables y bien diseñadas.'
+              en: 'Urban environment conditions that facilitate non-motorised travel, on foot and by bicycle, such as connected, permeable and well-designed street networks.'
+      safety:
+        label: {es: 'Seguridad y protección', en: 'Safety and protection'}
+        colour: {fill: '#FFD6D6', stroke: '#F7A94F'}
+        ## Every indicator of this domain also belongs to another: safety is a
+        ## lens on them, as the sheet intends, rather than a set of its own.
+        about:
+          es: 'Las condiciones del entorno urbano que permiten a los residentes moverse con libertad y participar en la vida pública sin temor a la delincuencia, la violencia o los accidentes de tráfico.'
+          en: 'Conditions in the urban environment that allow residents to move freely and participate in public life without fear of crime, violence or traffic accidents.'
+        subdomains:
+          personal_safety:
+            label: {es: 'Seguridad personal', en: 'Personal safety'}
+            about:
+              es: 'Condiciones del entorno urbano relacionadas con la incidencia delictiva y la presencia de servicios públicos y de vigilancia que determinan el grado de protección física de las personas, reduciendo la exposición al crimen y favoreciendo la tranquilidad en el espacio público.'
+              en: 'Conditions in the urban environment related to crime incidence and the presence of public and surveillance services that determine the degree of people’s physical protection, reduce exposure to crime and promote peace of mind in public space.'
+          road_safety:
+            label: {es: 'Seguridad vial', en: 'Road safety'}
+            about:
+              es: 'Características y condiciones de la infraestructura vial y peatonal diseñadas para prevenir siniestros de tránsito, protegiendo la integridad física de peatones, ciclistas y conductores al desplazarse por la ciudad.'
+              en: 'Characteristics and conditions of road and pedestrian infrastructure designed to prevent traffic crashes, protecting the physical integrity of pedestrians, cyclists and drivers travelling through the city.'
+          risks:
+            label: {es: 'Riesgos', en: 'Risks'}
+            about:
+              es: 'Exposición y vulnerabilidad de la población frente a amenazas de origen natural o antrópico, tales como sismos, inundaciones, calor extremo, fuego y eventos climáticos adversos, así como la capacidad del entorno urbano para mitigar sus impactos y salvaguardar a la comunidad.'
+              en: 'Population exposure and vulnerability to natural or human-caused hazards, such as earthquakes, flooding, extreme heat, fire and adverse climate events, as well as the urban environment’s capacity to mitigate their impacts and safeguard the community.'
+      social_infrastructure:
+        label: {es: 'Infraestructura social', en: 'Social infrastructure'}
+        colour: {fill: '#FFE7C2', stroke: '#FFBD59'}
+        about:
+          es: 'La red de equipamientos públicos que favorecen la interacción social, la cohesión y el bienestar colectivo.'
+          en: 'The network of public facilities that supports social interaction, cohesion and collective well-being.'
+        subdomains:
+          public_services:
+            label: {es: 'Servicios públicos', en: 'Public services'}
+            about:
+              es: 'Conjunto de instalaciones, equipamientos, redes y atenciones gubernamentales o comunitarias básicas, orientadas al bienestar, la gestión urbana y el soporte de la vida cotidiana, cuya disponibilidad, cobertura y adecuado funcionamiento garantizan condiciones dignas, seguras y equitativas para la población en el entorno urbano.'
+              en: 'Set of essential government or community facilities, equipment, networks and services oriented toward well-being, urban management and support for daily life; their availability, coverage and proper operation ensure dignified, safe and equitable conditions for the population in the urban environment.'
+          health_healthcare:
+            label: {es: 'Salud y atención sanitaria', en: 'Health and healthcare'}
+            about:
+              es: 'Las instalaciones y los servicios sanitarios que contribuyen al bienestar físico y mental de los residentes.'
+              en: 'Facilities and health services that contribute to residents’ physical and mental well-being.'
+          community_culture_recreation:
+            label: {es: 'Comunidad, cultura y recreación', en: 'Community, culture and recreation'}
+            about:
+              es: 'Los espacios culturales, los lugares de interés patrimonial y los eventos comunitarios que fomentan la identidad y el sentido de pertenencia.'
+              en: 'Cultural spaces, heritage sites and community events that foster identity and a sense of belonging.'
+          education:
+            label: {es: 'Educación', en: 'Education'}
+            about:
+              es: 'Las instituciones educativas, desde la primera infancia hasta la enseñanza superior, que favorecen el desarrollo humano y la movilidad social.'
+              en: 'Educational institutions, from early childhood through higher education, that support human development and social mobility.'
+      sociodemographics:
+        label: {es: 'Características sociodemográficas', en: 'Sociodemographic characteristics'}
+        colour: {fill: '#FFF3C2', stroke: '#CCA300'}
+        about:
+          es: 'Las características de la población, como la edad, los ingresos, el nivel educativo y la composición de los hogares, que determinan cómo se percibe la calidad de vida en los distintos grupos.'
+          en: 'Characteristics of the population, such as age, income, educational attainment and household composition, that determine how quality of life is perceived across different groups.'
+        subdomains:
+          population:
+            label: {es: 'Población', en: 'Population'}
+            about:
+              es: 'Características de las personas que habitan un territorio, como edad, género, ingresos, nivel educativo, ocupación y distribución poblacional, que permiten identificar diferencias en la calidad de vida entre grupos.'
+              en: 'Characteristics of people living in an area, such as age, gender, income, educational attainment, occupation and population distribution, which make it possible to identify differences in quality of life between groups.'
+          household:
+            label: {es: 'Hogar', en: 'Household'}
+            about:
+              es: 'Características de los hogares, como su composición, tamaño, ingresos, condiciones de vivienda y nivel educativo de sus integrantes, que influyen en la percepción de la calidad de vida.'
+              en: 'Characteristics of households, such as their composition, size, income, housing conditions and members’ educational attainment, which influence the perception of quality of life.'
+          city:
+            label: {es: 'Ciudad', en: 'City'}
+            about:
+              es: 'Características sociodemográficas de la población y los hogares que habitan una ciudad, así como su distribución territorial y condiciones socioeconómicas, que influyen en la percepción de la calidad de vida en sus distintas zonas.'
+              en: 'Sociodemographic characteristics of the population and households living in a city, as well as their spatial distribution and socioeconomic conditions, which influence the perception of quality of life across its different areas.'
+    ## One entry per indicator, naming every domain the sheet assigns it
+    ## (an equal share of its weight in each).  'subdomain' may be given per
+    ## domain, as a shared indicator may answer to a different part of each.
+    indicators:
+      ## -- Ambient environment ------------------------------------------------
+      ## Core measure 2: the GUHVI's three sub-indices, as the sheet lists them.
+      ## Each is itself min-max normalised to 0-100, so those are its
+      ## goalposts.  Requires the Earth Engine container.
+      - variable: sp_urban_heat_exposure_index
+        name: heat_exposure
+        domains: [ambient_environment]
+        polarity: negative
+        goalposts: {min: 0, max: 100}
+        lens: quality
+        group: {es: 'Índice Global de Vulnerabilidad Urbana al Calor (GUHVI)', en: 'Global Urban Heat Vulnerability Index (GUHVI)'}
+        label: {es: 'Exposición al calor (GUHVI)', en: 'Heat exposure (GUHVI)'}
+        reading: {es: 'Índice de exposición al calor de {value} (0-100; menor es mejor)', en: 'Heat exposure index of {value} (0-100; lower is better)'}
+        subdomain: {es: 'Riesgos climáticos', en: 'Climate risks'}
+        about:
+          es: Subíndice de exposición al calor del GUHVI (0-100), a partir de la temperatura de la superficie terrestre; menor es mejor.
+          en: The GUHVI's heat exposure sub-index (0-100), from land surface temperature; lower is better.
+        sources:
+          - 'Turner et al. (2025) Urban Climate 64, 102716; computed in Google Earth Engine by GHSCI.'
+      - variable: sp_urban_heat_sensitivity_index
+        name: heat_sensitivity
+        domains: [ambient_environment]
+        polarity: negative
+        goalposts: {min: 0, max: 100}
+        lens: quality
+        group: {es: 'Índice Global de Vulnerabilidad Urbana al Calor (GUHVI)', en: 'Global Urban Heat Vulnerability Index (GUHVI)'}
+        label: {es: 'Sensibilidad al calor (GUHVI)', en: 'Heat sensitivity (GUHVI)'}
+        reading: {es: 'Índice de sensibilidad al calor de {value} (0-100; menor es mejor)', en: 'Heat sensitivity index of {value} (0-100; lower is better)'}
+        subdomain: {es: 'Riesgos climáticos', en: 'Climate risks'}
+        about:
+          es: Subíndice de sensibilidad al calor del GUHVI (0-100), a partir del albedo, la vegetación, las zonas climáticas locales, la densidad de población y la población vulnerable; menor es mejor.
+          en: The GUHVI's heat sensitivity sub-index (0-100), from albedo, vegetation, local climate zones, population density and the vulnerable population; lower is better.
+        sources:
+          - 'Turner et al. (2025) Urban Climate 64, 102716; computed in Google Earth Engine by GHSCI.'
+      - variable: sp_urban_heat_adaptive_capability_index
+        name: adaptive_capability
+        domains: [ambient_environment]
+        polarity: positive
+        goalposts: {min: 0, max: 100}
+        lens: quality
+        group: {es: 'Índice Global de Vulnerabilidad Urbana al Calor (GUHVI)', en: 'Global Urban Heat Vulnerability Index (GUHVI)'}
+        label: {es: 'Capacidad de adaptación al calor (GUHVI)', en: 'Heat adaptive capability (GUHVI)'}
+        reading: {es: 'Índice de capacidad de adaptación de {value} (0-100; mayor es mejor)', en: 'Adaptive capability index of {value} (0-100; higher is better)'}
+        subdomain: {es: 'Riesgos climáticos', en: 'Climate risks'}
+        about:
+          es: Subíndice de capacidad de adaptación del GUHVI (0-100), a partir de la razón de dependencia infantil, el índice de desarrollo humano subnacional y la mortalidad infantil; mayor es mejor.
+          en: The GUHVI's adaptive capability sub-index (0-100), from the child dependency ratio, the subnational human development index and infant mortality; higher is better.
+        sources:
+          - 'Turner et al. (2025) Urban Climate 64, 102716; computed in Google Earth Engine by GHSCI.'
+      ## Core measure 1.  Scored only where walkability is not attenuated by
+      ## it (the 'plain' variant); otherwise it would count twice.
+      - variable: sp_utci_day_mean
+        name: thermal_comfort
+        domains: [ambient_environment]
+        polarity: negative
+        lens: quality
+        active: false
+        inactive_reason:
+          es: Incluido mediante la atenuación de la caminabilidad por confort térmico. Elija la caminabilidad sin atenuación para puntuarlo aquí.
+          en: Included through walkability's thermal comfort attenuation. Choose walkability without attenuation to score it here.
+        group: {es: 'Confort térmico', en: 'Thermal comfort'}
+        label: {es: 'Confort térmico diurno', en: 'Daytime thermal comfort'}
+        reading: {es: 'UTCI diurno medio de {value} en superficies peatonales en el día más caluroso de 2023', en: 'Mean daytime UTCI of {value} on pedestrian surfaces on the hottest day of 2023'}
+        subdomain: {es: 'Medioambiente', en: 'Ambient'}
+        about:
+          es: Índice Universal de Clima Térmico (UTCI) medio durante las horas de sol en superficies peatonales, modelado para el día más caluroso de 2023; menor es mejor.
+          en: Mean Universal Thermal Climate Index (UTCI) over sunlit hours on pedestrian surfaces, modelled for the hottest day of 2023; lower is better.
+        sources:
+          - 'Rossano Schifanella (WP02): SOLWEIG, forced by Mexicali airport observations for 21 July 2023; UTCI operational polynomial (Bröde et al. 2012).'
+      ## Core measure 7: the sheet's scoring for water bodies in arid cities,
+      ## 100 within 200 m, 90 within 500 m, 80 within 1000 m, and 60 beyond --
+      ## water mattering enough in an arid city that its lowest score is 60.
+      - variable: sp_walk_nearest_node_blue_space
+        domains: [ambient_environment]
+        transform: {steps: [[200, 100], [500, 90], [1000, 80], [1500, 60]], beyond: 60}
+        group: {es: 'Espacios azules naturales disponibles', en: 'Available natural blue spaces'}
+        label: {es: 'Espacios azules naturales cercanos', en: 'Natural blue space nearby'}
+        reading: {es: '{access} de la población vive a menos de 500 m de un cuerpo de agua; en promedio, el más cercano está a {value}', en: '{access} of the population live within 500 m of a water body; on average the nearest is {value} away'}
+        reading_columns: {access: pct_access_walk_blue_space_500m}
+        subdomain: {es: 'Medioambiente', en: 'Ambient'}
+        about:
+          es: Distancia a pie al cuerpo de agua más cercano, puntuada con la escala del proyecto para ciudades áridas (100 a 200 m, 90 a 500 m, 80 a 1 km y 60 más allá).
+          en: Walking distance to the nearest water body, scored by the project's scale for arid cities (100 within 200 m, 90 within 500 m, 80 within 1 km, and 60 beyond).
+        sources:
+          - 'OpenStreetMap contributors (Geofabrik Mexico extract, 15 August 2026).'
+      ## -- Ambient and built environment -------------------------------------
+      - variable: sp_ext_ndvi
+        name: vegetation
+        domains: [ambient_environment, built_environment]
+        polarity: positive
+        lens: quality
+        group: {es: 'Vegetación y sombra', en: 'Vegetation and shade'}
+        label: {es: 'Cobertura vegetal (NDVI)', en: 'Vegetation cover (NDVI)'}
+        reading: {es: 'Índice de vegetación (NDVI) medio de {value}', en: 'Mean vegetation index (NDVI) of {value}'}
+        subdomain:
+          ambient_environment: {es: 'Medioambiente', en: 'Ambient'}
+          built_environment: {es: 'Infraestructura verde y azul', en: 'Green and blue infrastructure'}
+        about:
+          es: Índice de vegetación de diferencia normalizada (NDVI) medio; mayor es mejor.
+          en: Mean normalised difference vegetation index (NDVI); higher is better.
+        sources:
+          - 'Mexicali ULI work packages (final_indicators.gpkg, 22 September 2026).'
+      - variable: sp_walk_nearest_node_public_open_space_any
+        name: parks
+        domains: [ambient_environment, built_environment]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a parques', en: 'Access to parks'}
+        label: {es: 'Parques a menos de 300 m', en: 'Parks within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de un parque o espacio público abierto; en promedio, el más cercano está a {value}', en: '{access} of the population live within 300 m of a park or public open space; on average the nearest is {value} away'}
+        subdomain:
+          ambient_environment: {es: 'Medioambiente', en: 'Ambient'}
+          built_environment: {es: 'Infraestructura verde y azul', en: 'Green and blue infrastructure'}
+        about:
+          es: Distancia a pie al espacio público abierto más cercano, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest public open space, scored with a 300 m soft threshold.
+        sources:
+          - 'OpenStreetMap contributors (Geofabrik Mexico extract, 15 August 2026); public open space identified by GHSCI.'
+      - variable: sp_access_large_public_green_space_score
+        name: lpugs
+        domains: [ambient_environment, built_environment]
+        lens: accessibility
+        group: {es: 'Accesibilidad a grandes espacios públicos abiertos', en: 'Large public open space accessibility'}
+        label: {es: 'Gran espacio verde público a menos de 500 m', en: 'Large public green space within 500 m'}
+        reading: {es: '{value} de la población vive a menos de 500 m de un gran espacio verde público', en: '{value} of the population live within 500 m of a large public green space'}
+        subdomain:
+          ambient_environment: {es: 'Medioambiente', en: 'Ambient'}
+          built_environment: {es: 'Infraestructura verde y azul', en: 'Green and blue infrastructure'}
+        about:
+          es: Acceso a pie, a 500 m, a un espacio verde público grande.
+          en: Walking access within 500 m to a large public green space.
+        sources:
+          - 'GHSCI large public urban green space indicator (Google Earth Engine), with OpenStreetMap public open space.'
+      ## -- Ambient environment and safety -------------------------------------
+      - variable: sp_ext_major_road_length_300m
+        name: major_roads
+        domains: [ambient_environment, safety]
+        polarity: negative
+        lens: proximity
+        group: {es: 'Proximidad a altos niveles de tráfico', en: 'Proximity to high levels of traffic'}
+        label: {es: 'Proximidad a vialidades principales', en: 'Proximity to major roads'}
+        reading: {es: 'En promedio, {value} de vialidades principales a 300 m', en: 'On average, {value} of major roads within 300 m'}
+        subdomain:
+          ambient_environment: {es: 'Medioambiente', en: 'Ambient'}
+          safety: {es: 'Seguridad vial', en: 'Road safety'}
+        about:
+          es: Longitud de vialidades principales a 300 m, una aproximación a la exposición al ruido, la contaminación y el riesgo del tráfico; menor es mejor.
+          en: Length of major roads within 300 m, a proxy for exposure to traffic noise, pollution and danger; lower is better.
+        sources:
+          - 'Mexicali ULI work packages (final_indicators.gpkg, 22 September 2026).'
+      ## -- Built environment, mobility and social infrastructure -------------
+      ## The walkability core measure (the sheet's starred row); attenuated by
+      ## thermal comfort by default, and replaced by walkability alone in the
+      ## 'plain' variant (see 'variants').  Its components in the sheet (net
+      ## residential density, commercial land use, land use mix) are not
+      ## scored separately.
+      - variable: sp_walk_idx_300_tm
+        name: walkability
+        domains: [built_environment, mobility_transport, social_infrastructure]
+        polarity: positive
+        lens: accessibility
+        group: {es: 'Índice de caminabilidad', en: 'Walkability index'}
+        label: {es: 'Caminabilidad (300 m), atenuada por confort térmico', en: 'Walkability (300 m), attenuated by thermal comfort'}
+        reading: {es: 'Puntuación media de caminabilidad de {value} (mayor es más caminable)', en: 'Average walkability score of {value} (higher is more walkable)'}
+        subdomain:
+          built_environment: {es: 'Diseño urbano', en: 'Urban design'}
+          mobility_transport: {es: 'Movilidad activa', en: 'Active mobility'}
+          social_infrastructure: {es: 'Servicios públicos', en: 'Public services'}
+        about:
+          es: Suma de puntuaciones z del acceso a mercado de alimentos frescos, tienda de conveniencia y transporte público a 300 m, la densidad de población y la densidad de intersecciones. Por defecto, su rango percentil se atenúa según el confort térmico diurno, hasta la mitad en los lugares más calurosos.
+          en: Sum of z-scores of access to a fresh food market, convenience store and public transport within 300 m, population density and intersection density. By default its percentile rank is attenuated by daytime thermal comfort, by up to half at the hottest locations.
+        sources:
+          - 'Frank, L. D. et al. (2010) The development of a walkability index. British Journal of Sports Medicine 44, 924-933.'
+          - 'OpenStreetMap contributors (Geofabrik Mexico extract, 15 August 2026); INEGI DENUE (May 2026); IMIP / CFC public transport stops; GHS-POP R2023A.'
+          - 'Thermal comfort: Rossano Schifanella (WP02), SOLWEIG modelled UTCI for 21 July 2023 (Bröde et al. 2012).'
+      ## -- Built environment, mobility and safety ----------------------------
+      ## Smaller blocks are more walkable and slow traffic; the sheet notes its
+      ## importance for Condesa's gated fraccionamientos.
+      - variable: sp_ext_block_perimeter_m
+        name: block_size
+        domains: [built_environment, mobility_transport, safety]
+        polarity: negative
+        lens: presence
+        group: {es: 'Presencia de infraestructura peatonal', en: 'Pedestrian infrastructure presence'}
+        label: {es: 'Tamaño de manzana (perímetro)', en: 'Block size (perimeter)'}
+        reading: {es: 'Las manzanas miden en promedio {value} de perímetro', en: 'Blocks average {value} in perimeter'}
+        subdomain:
+          built_environment: {es: 'Morfología urbana', en: 'Urban morphology'}
+          mobility_transport: {es: 'Movilidad activa', en: 'Active mobility'}
+          safety: {es: 'Seguridad vial', en: 'Road safety'}
+        about:
+          es: Perímetro medio de manzana (m); las manzanas más pequeñas son más caminables; menor es mejor.
+          en: Mean block perimeter (m); smaller blocks are more walkable; lower is better.
+        sources:
+          - 'Mexicali ULI work packages (final_indicators.gpkg, 22 September 2026).'
+      ## Police and fire stations: the work package's revised thresholds, as
+      ## soft thresholds on straight-line distance (accessibility.euclidean).
+      - variable: sp_euclid_dist_imip_police_station
+        name: police_2km
+        domains: [safety, mobility_transport, built_environment]
+        transform: {soft_threshold: 2000}
+        group: {es: 'Seguridad personal y vial', en: 'Personal and road safety'}
+        label: {es: 'Estación de policía a menos de 2 km', en: 'Police station within 2 km'}
+        reading: {es: 'En promedio, la estación de policía más cercana está a {value} en línea recta', en: 'On average the nearest police station is {value} away in a straight line'}
+        subdomain:
+          safety: {es: 'Seguridad personal', en: 'Personal safety'}
+        about:
+          es: Distancia en línea recta a la instalación policial más cercana, puntuada con un umbral suave de 2 km.
+          en: Straight-line distance to the nearest police facility, scored with a 2 km soft threshold.
+        sources:
+          - 'IMIP equipamiento layer via CFC (27 police facilities); threshold revised by the work package (Alejandro).'
+      - variable: sp_euclid_dist_imip_fire_station
+        name: fire_3km
+        domains: [safety, mobility_transport, built_environment]
+        transform: {soft_threshold: 3000}
+        group: {es: 'Seguridad personal y vial', en: 'Personal and road safety'}
+        label: {es: 'Estación de bomberos a menos de 3 km', en: 'Fire station within 3 km'}
+        reading: {es: 'En promedio, la estación de bomberos más cercana está a {value} en línea recta', en: 'On average the nearest fire station is {value} away in a straight line'}
+        subdomain:
+          safety: {es: 'Riesgos', en: 'Risks'}
+        about:
+          es: Distancia en línea recta a la estación de bomberos municipal más cercana, puntuada con un umbral suave de 3 km (NFPA 1710, unos cuatro minutos a 45 km/h).
+          en: Straight-line distance to the nearest municipal fire station, scored with a 3 km soft threshold (NFPA 1710, about four minutes at 45 km/h).
+        sources:
+          - 'IMIP equipamiento layer via CFC (10 municipal fire stations); threshold revised by the work package (Alejandro).'
+      ## Level of traffic stress: distance to the nearest fresh food or
+      ## convenience store by the low stress (LTS 1-2) cycling network, which
+      ## is searched well beyond this threshold.
+      - variable: sp_cycle_safe_nearest_node_fresh_food_pooled
+        name: cycle_low_stress_food
+        domains: [safety, mobility_transport, built_environment]
+        transform: {soft_threshold: 1500}
+        group: {es: 'Nivel de estrés del tráfico para ciclismo', en: 'Level of traffic stress for cycling'}
+        label: {es: 'Alimentos a menos de 1.5 km en bicicleta de bajo estrés', en: 'Food within 1.5 km by low-stress cycling'}
+        reading: {es: 'En promedio, la tienda de alimentos más cercana está a {value} por calles de bajo estrés', en: 'On average the nearest fresh food or convenience store is {value} away by low-stress streets'}
+        subdomain:
+          safety: {es: 'Seguridad vial', en: 'Road safety'}
+          mobility_transport: {es: 'Movilidad activa', en: 'Active mobility'}
+          built_environment: {es: 'Diseño urbano', en: 'Urban design'}
+        about:
+          es: Distancia a la tienda de alimentos frescos o de conveniencia más cercana usando solo calles de bajo estrés para bicicleta (LTS 1-2), puntuada con un umbral suave de 1.5 km.
+          en: Distance to the nearest fresh food or convenience store using only low-stress cycling streets (LTS 1-2), scored with a 1.5 km soft threshold.
+        sources:
+          - 'OpenStreetMap contributors (Geofabrik Mexico extract, 15 August 2026); level of traffic stress classified by GHSCI.'
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      ## -- Mobility and transport ---------------------------------------------
+      ## At the 300 m of the city's walkability policy, as the other walking
+      ## access indicators are.
+      - variable: sp_walk_nearest_node_pt_any
+        name: public_transport
+        domains: [mobility_transport]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso al transporte público', en: 'Public-transport access'}
+        label: {es: 'Transporte público a menos de 300 m', en: 'Public transport within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de una parada de transporte público; en promedio, la más cercana está a {value}', en: '{access} of the population live within 300 m of a public transport stop; on average the nearest is {value} away'}
+        subdomain: {es: 'Transporte público', en: 'Public transport'}
+        about:
+          es: Distancia a pie a la parada de transporte público más cercana, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest public transport stop, scored with a 300 m soft threshold.
+        sources:
+          - 'IMIP / CFC public transport stops (suburban transport routes).'
+      ## -- Social infrastructure, mobility and economic development ----------
+      ## Daily essential services access (the sheet's starred rows).
+      - variable: sp_walk_nearest_node_denue_fresh_food
+        name: fresh_food
+        domains: [social_infrastructure, mobility_transport, economic_development]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a servicios esenciales cotidianos', en: 'Daily essential-services access'}
+        label: {es: 'Alimentos frescos a menos de 300 m', en: 'Fresh food within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de un comercio de alimentos frescos; en promedio, el más cercano está a {value}', en: '{access} of the population live within 300 m of a fresh food retailer; on average the nearest is {value} away'}
+        subdomain:
+          social_infrastructure: {es: 'Servicios públicos', en: 'Public services'}
+          mobility_transport: {es: 'Movilidad activa', en: 'Active mobility'}
+          economic_development: {es: 'Ambiente de alimentación', en: 'Food environment'}
+        about:
+          es: Distancia a pie al comercio de alimentos frescos más cercano, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest fresh food retailer, scored with a 300 m soft threshold.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_diversity_fresh_food_500m
+        name: div_fresh_food_500m
+        domains: [social_infrastructure, mobility_transport, economic_development]
+        group: {es: 'Acceso a servicios esenciales cotidianos', en: 'Daily essential-services access'}
+        label: {es: 'Diversidad de alimentos frescos a 500 m', en: 'Fresh food diversity within 500 m'}
+        reading: {es: 'Diversidad media de comercio de alimentos frescos a 500 m a pie: {value} (0 = un tipo o ninguno, 1 = todos los tipos por igual)', en: 'Mean diversity of fresh food retail within a 500 m walk: {value} (0 = one kind or none, 1 = every kind equally)'}
+        subdomain:
+          social_infrastructure: {es: 'Servicios públicos', en: 'Public services'}
+          mobility_transport: {es: 'Movilidad activa', en: 'Active mobility'}
+          economic_development: {es: 'Ambiente de alimentación', en: 'Food environment'}
+        about:
+          es: Diversidad (entropía de Shannon, 0-1) de los tipos de comercio de alimentos frescos a 500 m a pie.
+          en: Diversity (Shannon entropy, 0-1) of the kinds of fresh food retail within a 500 m walk.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_nearest_node_denue_food_retail
+        name: convenience
+        domains: [social_infrastructure, mobility_transport, economic_development]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a servicios esenciales cotidianos', en: 'Daily essential-services access'}
+        label: {es: 'Tiendas de conveniencia a menos de 300 m', en: 'Convenience stores within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de una tienda de conveniencia; en promedio, la más cercana está a {value}', en: '{access} of the population live within 300 m of a convenience store; on average the nearest is {value} away'}
+        subdomain:
+          social_infrastructure: {es: 'Servicios públicos', en: 'Public services'}
+          mobility_transport: {es: 'Movilidad activa', en: 'Active mobility'}
+          economic_development: {es: 'Ambiente de alimentación', en: 'Food environment'}
+        about:
+          es: Distancia a pie a la tienda de conveniencia más cercana, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest convenience store, scored with a 300 m soft threshold.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      ## A disamenity: the share living 250 m or more from a petrol station
+      - variable: sp_walk_beyond_denue_petrol_station_250m
+        name: petrol_250m
+        domains: [social_infrastructure, mobility_transport, economic_development]
+        lens: proximity
+        group: {es: 'Acceso a servicios esenciales cotidianos', en: 'Daily essential-services access'}
+        label: {es: 'A 250 m o más de gasolineras', en: '250 m or more from petrol stations'}
+        reading: {es: '{value} de la población vive a 250 m o más de una gasolinera', en: '{value} of the population live 250 m or more from a petrol station'}
+        subdomain:
+          social_infrastructure: {es: 'Servicios públicos', en: 'Public services'}
+          economic_development: {es: 'Recursos', en: 'Resources'}
+        about:
+          es: Si la gasolinera más cercana está a 250 m o más a pie (una desventaja cuando está más cerca).
+          en: Whether the nearest petrol station is 250 m or more away on foot (a disamenity when closer).
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      ## -- Social infrastructure ---------------------------------------------
+      - variable: sp_walk_nearest_node_denue_primary_school
+        name: primary_school
+        domains: [social_infrastructure]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a salud, educación y cuidados', en: 'Health, education and care access'}
+        label: {es: 'Escuelas primarias a menos de 300 m', en: 'Primary schools within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de una escuela primaria; en promedio, la más cercana está a {value}', en: '{access} of the population live within 300 m of a primary school; on average the nearest is {value} away'}
+        subdomain: {es: 'Educación', en: 'Education'}
+        about:
+          es: Distancia a pie a la escuela primaria más cercana, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest primary school, scored with a 300 m soft threshold.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_diversity_education_500m
+        name: div_education_500m
+        domains: [social_infrastructure]
+        group: {es: 'Acceso a salud, educación y cuidados', en: 'Health, education and care access'}
+        label: {es: 'Diversidad educativa a 500 m', en: 'Education diversity within 500 m'}
+        reading: {es: 'Diversidad media de niveles educativos a 500 m a pie: {value} (0 = un tipo o ninguno, 1 = todos los tipos por igual)', en: 'Mean diversity of levels of education within a 500 m walk: {value} (0 = one kind or none, 1 = every kind equally)'}
+        subdomain: {es: 'Educación', en: 'Education'}
+        about:
+          es: Diversidad (entropía de Shannon, 0-1) de los niveles educativos ofrecidos a 500 m a pie.
+          en: Diversity (Shannon entropy, 0-1) of the levels of education offered within a 500 m walk.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_nearest_node_denue_primary_healthcare
+        name: primary_healthcare
+        domains: [social_infrastructure]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a salud, educación y cuidados', en: 'Health, education and care access'}
+        label: {es: 'Atención primaria de salud a menos de 300 m', en: 'Primary healthcare within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de un servicio de atención primaria; en promedio, el más cercano está a {value}', en: '{access} of the population live within 300 m of primary healthcare; on average the nearest is {value} away'}
+        subdomain: {es: 'Salud y atención sanitaria', en: 'Health and healthcare'}
+        about:
+          es: Distancia a pie al servicio de atención primaria más cercano, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest primary healthcare service, scored with a 300 m soft threshold.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_diversity_health_care_500m
+        name: div_health_500m
+        domains: [social_infrastructure]
+        group: {es: 'Acceso a salud, educación y cuidados', en: 'Health, education and care access'}
+        label: {es: 'Diversidad de servicios de salud a 500 m', en: 'Health service diversity within 500 m'}
+        reading: {es: 'Diversidad media de servicios de salud a 500 m a pie: {value} (0 = un tipo o ninguno, 1 = todos los tipos por igual)', en: 'Mean diversity of health services within a 500 m walk: {value} (0 = one kind or none, 1 = every kind equally)'}
+        subdomain: {es: 'Salud y atención sanitaria', en: 'Health and healthcare'}
+        about:
+          es: Diversidad (entropía de Shannon, 0-1) de los tipos de servicio de salud a 500 m a pie.
+          en: Diversity (Shannon entropy, 0-1) of the kinds of health service within a 500 m walk.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_nearest_node_denue_care_support
+        name: care_support
+        domains: [social_infrastructure]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a salud, educación y cuidados', en: 'Health, education and care access'}
+        label: {es: 'Servicios de cuidado a menos de 300 m', en: 'Care services within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de un servicio de cuidado; en promedio, el más cercano está a {value}', en: '{access} of the population live within 300 m of a care service; on average the nearest is {value} away'}
+        subdomain: {es: 'Servicios públicos', en: 'Public services'}
+        about:
+          es: Distancia a pie al servicio de cuidado más cercano, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest care service, scored with a 300 m soft threshold.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_diversity_care_500m
+        name: div_care_500m
+        domains: [social_infrastructure]
+        group: {es: 'Acceso a salud, educación y cuidados', en: 'Health, education and care access'}
+        label: {es: 'Diversidad de servicios de cuidado a 500 m', en: 'Care service diversity within 500 m'}
+        reading: {es: 'Diversidad media de servicios de cuidado a 500 m a pie: {value} (0 = un tipo o ninguno, 1 = todos los tipos por igual)', en: 'Mean diversity of care services within a 500 m walk: {value} (0 = one kind or none, 1 = every kind equally)'}
+        subdomain: {es: 'Servicios públicos', en: 'Public services'}
+        about:
+          es: Diversidad (entropía de Shannon, 0-1) de los tipos de servicio de cuidado a 500 m a pie.
+          en: Diversity (Shannon entropy, 0-1) of the kinds of care service within a 500 m walk.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_nearest_node_denue_ccr_any
+        name: ccr_any
+        domains: [social_infrastructure]
+        transform: {soft_threshold: 300}
+        group: {es: 'Acceso a comunidad, cultura y recreación', en: 'Community, culture and recreation access'}
+        label: {es: 'Comunidad, cultura y recreación a menos de 300 m', en: 'Community, culture and recreation within 300 m'}
+        reading: {es: '{access} de la población vive a menos de 300 m de un espacio comunitario, cultural o recreativo; en promedio, el más cercano está a {value}', en: '{access} of the population live within 300 m of a community, cultural or recreational venue; on average the nearest is {value} away'}
+        subdomain: {es: 'Comunidad, cultura y recreación', en: 'Community, culture and recreation'}
+        about:
+          es: Distancia a pie al espacio comunitario, cultural o recreativo más cercano, puntuada con un umbral suave de 300 m.
+          en: Walking distance to the nearest community, cultural or recreational venue, scored with a 300 m soft threshold.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      - variable: sp_walk_diversity_community_culture_rec_500m
+        name: div_ccr_500m
+        domains: [social_infrastructure]
+        group: {es: 'Acceso a comunidad, cultura y recreación', en: 'Community, culture and recreation access'}
+        label: {es: 'Diversidad de comunidad, cultura y recreación a 500 m', en: 'Community, culture and recreation diversity within 500 m'}
+        reading: {es: 'Diversidad media de espacios comunitarios, culturales y recreativos a 500 m a pie: {value} (0 = un tipo o ninguno, 1 = todos los tipos por igual)', en: 'Mean diversity of community, cultural and recreational venues within a 500 m walk: {value} (0 = one kind or none, 1 = every kind equally)'}
+        subdomain: {es: 'Comunidad, cultura y recreación', en: 'Community, culture and recreation'}
+        about:
+          es: Diversidad (entropía de Shannon, 0-1) de los espacios comunitarios, culturales y recreativos a 500 m a pie.
+          en: Diversity (Shannon entropy, 0-1) of community, cultural and recreational venues within a 500 m walk.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      ## -- Economic development ----------------------------------------------
+      ## Judged at 1000 m, which the 1500 m search does not extend far enough
+      ## beyond for a soft threshold, so binary access is used.
+      - variable: sp_walk_access_denue_manufacturing_1000m
+        name: manufacturing_1000m
+        domains: [economic_development]
+        group: {es: 'Acceso al empleo', en: 'Access to employment'}
+        label: {es: 'Manufactura a menos de 1 km', en: 'Manufacturing within 1 km'}
+        reading: {es: '{value} de la población vive a menos de 1 km a pie de un establecimiento manufacturero', en: '{value} of the population live within a 1 km walk of a manufacturing establishment'}
+        subdomain: {es: 'Economía', en: 'Economy'}
+        about:
+          es: Si hay un establecimiento manufacturero a 1 km a pie, como aproximación al acceso al empleo.
+          en: Whether a manufacturing establishment lies within a 1 km walk, as a proxy for access to employment.
+        sources:
+          - 'INEGI (2026) Directorio Estadístico Nacional de Unidades Económicas (DENUE), May 2026.'
+      ## Delivered for the 100 m grid only, which tiles the city, so every
+      ## sample point takes its cell's value.
+      - variable: sp_ext_economic_sector_diversity
+        name: job_diversity
+        domains: [economic_development]
+        polarity: positive
+        lens: diversity
+        group: {es: 'Acceso al empleo', en: 'Access to employment'}
+        label: {es: 'Diversidad de empleos', en: 'Job diversity'}
+        reading: {es: 'Diversidad media de sectores económicos de {value} (0-1)', en: 'Mean diversity of economic sectors of {value} (0-1)'}
+        subdomain: {es: 'Economía', en: 'Economy'}
+        about:
+          es: Diversidad (0-1) de los sectores económicos en torno a las áreas residenciales.
+          en: Diversity (0-1) of economic sectors around residential areas.
+        sources:
+          - 'Mexicali ULI work packages (final_indicators.gpkg, 22 September 2026).'
+    ## The dashboard offers walkability with or without thermal comfort
+    ## attenuation.  The base index attenuates it; the 'plain' variant
+    ## (uli_plain) uses walkability alone and scores thermal comfort as an
+    ## ambient indicator instead, each against its own goalposts.
+    variants:
+      replace: walkability
+      base:
+        attenuation: true
+        label: {es: 'Caminabilidad (300 m), atenuada por confort térmico', en: 'Walkability (300 m), attenuated by thermal comfort'}
+      options:
+        plain:
+          variable: sp_walk_idx_300
+          activate: [thermal_comfort]
+          attenuation: false
+          label: {es: 'Caminabilidad (300 m), sin atenuación por confort térmico', en: 'Walkability (300 m), without thermal comfort attenuation'}
+
+## Indicator exploration dashboard (process/_export_dashboard.py).
+##
+## The two regions of interest are analysed inside this one run, sharing the
+## network, population grid and destination set, so differences between them
+## are real rather than artefacts of separate analyses.  Each declares the
+## custom aggregation that summarises it region-wide -- the only scale that
+## tiles the whole of it -- and the scales a pane may display it at.
+dashboard:
+  slug: mexicali
+  ## Two dashboards can be exported from this configuration:
+  ##   composite  the Urban Liveability Index dashboard (this study's
+  ##              priority): the index, its domains and indicators, and the
+  ##              walkability attenuation setting, nothing else
+  ##   general    every configured indicator, grouped by theme, without the
+  ##              index (exported with --type=general, under its own slug)
+  ##   combined   both in one dataset: the theme selector switches between
+  ##              the index (its own theme) and the general indicators
+  type: combined
+  index: uli
+  general:
+    slug: mexicali_general
+  ## The application's own title, shown in the sidebar and the browser tab.
+  title:
+    es: Entornos vivibles Mexicali-Condesa
+    en: Mexicali-Condesa Liveability
+  ## The dataset's label, shown where a dataset must be named.
+  label:
+    es: Mexicali y Condesa
+    en: Mexicali and Condesa
+  scales:
+    - grid
+    - agebs
+    - manzanas
+    - condesa_fraccionamientos
+    - condesa_lotes
+    - region_mexicali
+    - region_condesa
+  scale_labels:
+    grid:
+      es: Cuadrícula de 100 m
+      en: 100 m grid
+    agebs:
+      es: AGEB
+      en: AGEB (census area)
+    manzanas:
+      es: Manzanas
+      en: Manzanas (census blocks)
+    condesa_lotes:
+      es: Lotes
+      en: Lots
+    condesa_fraccionamientos:
+      es: Fraccionamientos
+      en: Subdivisions
+    region_mexicali:
+      es: Región (Mexicali)
+      en: Region (Mexicali)
+    region_condesa:
+      es: Región (Condesa)
+      en: Region (Condesa)
+  regions:
+    mexicali:
+      label:
+        es: Mexicali (área urbana)
+        en: Mexicali (urban area)
+      summary_scale: region_mexicali
+      scales: [grid, agebs, manzanas]
+    condesa:
+      label:
+        es: Distrito Condesa
+        en: Condesa district
+      summary_scale: region_condesa
+      scales: [grid, condesa_fraccionamientos, condesa_lotes]
+      ## The development is too new for the census to have counted its
+      ## residents, so in the index dashboard's distributions its grid cells
+      ## are weighted by the lots they contain, at the 3.2 residents per lot
+      ## its own summary assumes, rather than by recorded population.
+      grid_weight: {aggregation: condesa_lotes, per_unit: 3.2}
+  crosswalk: MX/Mexicali Liveability/uli_core_measure_crosswalk.yml
+  ## Colour classes, by column.
+  ##
+  ## Anything omitted is classified from its declared units where the data
+  ## occupies them, and from its range otherwise.  Four forms are accepted:
+  ##
+  ##   [a, b, c]                       interior breaks; the tails are grouped,
+  ##                                   so the outer classes read "< a", ">= c"
+  ##   {edges: [...], closed: true}    exactly these classes, no tails
+  ##   {categories: [...]}             an ordinal code, matched exactly
+  ##   {scale: log2, classes: n}       edges doubling about the column's target
+  ##
+  ## Drawn as equal-width classes, a doubling ladder *is* a log axis -- and its
+  ## open lowest class is what lets a column holding genuine zeros (both
+  ## neighbourhood densities do) be shown on one at all.
+  breaks:
+    ## A sum of z-scores: single units through the middle, tails grouped.
+    local_walkability: [-3, -2, -1, 0, 1, 2, 3]
+    ## A count of the three daily-living destination types, averaged over an
+    ## area's sample points, so it is bounded 0-3 and has no tails to group.
+    local_daily_living: {edges: [0, 1, 2, 3], closed: true}
+    ## Unbounded above and skewed: doubling about the reference targets below.
+    local_nh_population_density: {scale: log2, classes: 7}
+    local_nh_intersection_density: {scale: log2, classes: 6}
+    ## Min-max normalised 0-100.  Five classes of twenty is too coarse to read
+    ## a heat map by, so every ten units.
+    urban_heat_guhvi: {edges: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], closed: true}
+    urban_heat_exposure_index: {edges: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], closed: true}
+    urban_heat_sensitivity_index: {edges: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], closed: true}
+    urban_heat_adaptive_capability_index: {edges: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], closed: true}
+    ## An ordinal class, not a quantity.
+    urban_heat_guhvi_class: {categories: [1, 2, 3, 4, 5]}
+    ## Modelled UTCI (degrees C) varies within the city by shade alone --
+    ## air temperature is uniform -- so its classes are one degree wide,
+    ## with the tails grouped.
+    utci_day_mean: [42, 43, 44, 45, 46]
+    utci_peak: [49, 50, 51, 52, 53, 54]
+    ## Walkability attenuated by thermal comfort is a percentile rank on 0-1
+    walk_idx_300_tm: {edges: [0, 0.2, 0.4, 0.6, 0.8, 1], closed: true}
+    ## the unadjusted index is a sum of z-scores
+    walk_idx_300: [-3, -2, -1, 0, 1, 2, 3]
+    walk_dl_300: {edges: [0, 1, 2, 3], closed: true}
+  ## Targets a column can be measured against.
+  ##
+  ## Seeded automatically from the GHSCI reference configuration's own
+  ## `thresholds` block (configuration/indicators.yml), so the neighbourhood
+  ## density targets below are already present and are restated here only to
+  ## make them visible.  Add an entry -- criteria and relationship -- to mark a
+  ## target agreed later, without touching code.
+  thresholds:
+    local_nh_population_density: {criteria: 5700, relationship: '>='}
+    local_nh_intersection_density: {criteria: 100, relationship: '>='}
+  ## Outputs to leave out of the vocabulary entirely.
+  ##
+  ## The GUHVI sub-indicators are real, and documented in the data dictionary,
+  ## but they are not what this workshop navigates by: several (the subnational
+  ## HDI, the infant mortality rate) are constant across a single city and map
+  ## as one flat colour.  The composite sub-indices they feed -- exposure,
+  ## sensitivity, adaptive capability -- are kept.
+  hide:
+    - urban_heat_land_surface_temp_c
+    - urban_heat_land_surface_albedo
+    - urban_heat_ndvi
+    - urban_heat_ndbi
+    - urban_heat_local_climate_zone_ordered
+    - urban_heat_population_density_per_sqkm
+    - urban_heat_vulnerable_pop_pct
+    - urban_heat_child_dependency_ratio
+    - urban_heat_subnational_hdi
+    - urban_heat_infant_mortality_rate
+  ## Workshop themes (Taller 3).
+  ##
+  ## These are the typology the workshop itself uses: its printed intervention
+  ## cards are grouped and colour-coded by them, and the "Match intervenciones"
+  ## sheet classifies every core measure this way.  They are declared here
+  ## rather than derived, because the analysis knows only its own reporting
+  ## domains -- which are in English and organised around destination types
+  ## rather than around what a designer can change.
+  ##
+  ## Colours are read from "Guía de materiales para Taller 3.pdf" (COLORES POR
+  ## TEMA).  They are used for identity only -- theme chips, the indicator
+  ## title, info panel accents -- and never as a choropleth ramp: eleven
+  ## arbitrary hues are not perceptually ordered, so using them for data would
+  ## stop colour meaning magnitude.
+  themes:
+    calor_confort:
+      label: {es: Calor y confort térmico, en: Heat and thermal comfort}
+      color: "#ffd973"
+      ## outdoor thermal comfort (UTCI), linked as delivered by WP02
+      families: [urban_heat, linked_utci]
+    vegetacion:
+      label: {es: Vegetación, en: Vegetation}
+      color: "#b4c273"
+      families: [public_open_space_large, public_open_space_any]
+    riesgos_ambientales:
+      label: {es: Riesgos ambientales, en: Environmental hazards}
+      color: "#978973"
+      ## Petrol stations are the one environmental disamenity GHSCI measures
+      ## here; air quality and flooding belong to other partners.
+      families: [denue_petrol_station]
+    infra_verde_azul:
+      label: {es: Infraestructura verde y azul, en: Green and blue infrastructure}
+      color: "#4db9d2"
+      families: [blue_space, public_open_space_with_water]
+    transporte_activo:
+      label:
+        es: Ambientes que fomentan el transporte activo
+        en: Environments that encourage active transport
+      color: "#709e8b"
+      ## Walkability, the globally comparable 500 m core scores, and the
+      ## "everything within a short walk" measures -- activity centres and
+      ## combined access -- all describe the same thing: whether a place
+      ## supports getting about on foot.
+      families:
+        - walkability
+        - walkability_variants
+        - core_access
+        - activity_centre_essentials_local
+        - activity_centre_essentials_complete
+        - activity_centre_health_all
+        - activity_centre_civic_all
+        - activity_centre_jobs_local
+        - activity_centre_jobs_complete
+        - activity_centre_services_local
+        - activity_centre_services_complete
+        - activity_centre_local
+        - activity_centre_complete
+        - all_strict
+        - all_lenient
+        - all_essentials_strict
+        - all_essentials_lenient
+        - all_services_strict
+        - all_services_lenient
+    transporte_publico:
+      label: {es: Transporte público, en: Public transport}
+      color: "#f9e4c5"
+      families: [pt_any]
+    servicios_esenciales:
+      label: {es: Servicios esenciales, en: Essential services}
+      color: "#e96666"
+      families:
+        - fresh_food_market
+        - fresh_food_pooled
+        - denue_fresh_food
+        - denue_food_retail
+        - denue_bakery_tortilleria
+        - denue_household_goods
+        - denue_pharmacy
+        - denue_finance_comms
+        - diversity_fresh_food
+        - convenience
+    salud_educacion_cuidados:
+      label:
+        es: Acceso a salud, educación y cuidados
+        en: Access to health, education and care
+      color: "#af93e7"
+      families:
+        - denue_preschool
+        - denue_primary_school
+        - denue_secondary_school
+        - denue_tertiary_education
+        - denue_primary_healthcare
+        - denue_medical_clinic
+        - denue_hospital
+        - denue_care_support
+        - denue_childcare
+        - diversity_education
+        - diversity_health_care
+        - diversity_care
+    amenidades_locales:
+      label:
+        es: Amenidades locales
+        en: Local amenities
+      ## The sheet writes this theme's full name both with and without a space
+      ## before the bracket; both spellings must match this entry.
+      match:
+        - Amenidades locales (Acceso a espacios comunitarios, culturales y recreativos)
+        - Amenidades locales(Acceso a espacios comunitarios, culturales y recreativos)
+        - Amenidades locales
+      color: "#3162d0"
+      families:
+        - denue_community
+        - denue_culture
+        - denue_sport
+        - denue_recreation
+        - denue_ccr_any
+        - diversity_community_culture_rec
+    empleos:
+      label: {es: Empleos, en: Employment}
+      color: "#d989d2"
+      match: [Empleos, Empleo]
+      families: [denue_employment_any, denue_employer_medium, denue_manufacturing]
+    vivienda:
+      label: {es: Vivienda, en: Housing}
+      color: "#ff8562"
+      ## Declared so the theme exists in the vocabulary, but housing is not a
+      ## GHSCI output here -- the viewer omits themes with no indicators.
+      families: []
+    servicios_emergencia:
+      ## Not a workshop theme: straight-line catchments for emergency
+      ## services, which none of the workshop themes covers.
+      label: {es: Servicios de emergencia, en: Emergency services}
+      color: "#c7a26b"
+      families: [catchments]
+    indice_habitabilidad:
+      ## Not a workshop theme: the provisional composite liveability index.
+      label: {es: Índice de entornos vivibles para Mexicali, en: Mexicali Urban Liveability Index}
+      color: "#4E8EF7"
+      families: [composite_uli]
+    paquetes_trabajo:
+      ## Not a workshop theme: indicators prepared by the other work
+      ## packages and linked as delivered (final_indicators.gpkg).
+      label: {es: Indicadores de los paquetes de trabajo, en: Work package indicators}
+      color: "#8aa39b"
+      families: [linked_external]
+    contexto:
+      ## Not a workshop theme: population, area and intersection counts are the
+      ## context an indicator is read against, and need somewhere to live.
+      label: {es: Contexto, en: Context}
+      color: "#b9b2a7"
+      families: [context]
+
+  ## Plain-language indicator names.  Without these, a family is named by a
+  ## humanised column name ("Denue pharmacy"), which is neither Spanish nor
+  ## what anyone calls the thing.  Correct these freely: they are configuration,
+  ## so revising them costs only `_export_dashboard.py --no-layers`.
+  labels:
+    families:
+      fresh_food_market: {es: Mercado de alimentos frescos (OSM), en: Fresh food market (OSM)}
+      fresh_food_pooled: {es: Alimentos frescos o tienda de conveniencia (OSM), en: Fresh food or convenience store (OSM)}
+      denue_fresh_food: {es: Alimentos frescos (DENUE), en: Fresh food retail (DENUE)}
+      denue_food_retail: {es: Venta de alimentos, cualquiera (DENUE), en: Food retail, any (DENUE)}
+      denue_bakery_tortilleria: {es: Panadería o tortillería, en: Bakery or tortillería}
+      denue_household_goods: {es: Artículos para el hogar, en: Household goods}
+      denue_pharmacy: {es: Farmacia, en: Pharmacy}
+      denue_finance_comms: {es: Servicios financieros y de comunicación, en: Finance and communications}
+      denue_petrol_station: {es: Gasolinera (desamenidad), en: Petrol station (disamenity)}
+      public_open_space_large: {es: Espacio público abierto grande, en: Large public open space}
+      public_open_space_any: {es: Espacio público abierto, cualquiera, en: Public open space, any}
+      blue_space: {es: Espacio azul natural, en: Natural blue space}
+      public_open_space_with_water: {es: Espacio público abierto con agua, en: Public open space with water}
+      pt_any: {es: Transporte público, cualquier parada, en: Public transport, any stop}
+      denue_preschool: {es: Preescolar, en: Preschool}
+      denue_primary_school: {es: Escuela primaria, en: Primary school}
+      denue_secondary_school: {es: Escuela secundaria, en: Secondary school}
+      denue_tertiary_education: {es: Educación superior, en: Tertiary education}
+      denue_primary_healthcare: {es: Atención primaria de salud, en: Primary healthcare}
+      denue_medical_clinic: {es: Consultorio o clínica médica, en: Medical clinic}
+      denue_hospital: {es: Hospital, en: Hospital}
+      denue_care_support: {es: Servicios de cuidado y apoyo, en: Care and support services}
+      denue_childcare: {es: Guardería, en: Childcare}
+      denue_community: {es: Espacios comunitarios, en: Community spaces}
+      denue_culture: {es: Espacios culturales, en: Cultural spaces}
+      denue_sport: {es: Instalaciones deportivas, en: Sports facilities}
+      denue_recreation: {es: Espacios recreativos, en: Recreation spaces}
+      denue_employment_any: {es: Empleo, cualquier establecimiento, en: Employment, any establishment}
+      denue_employer_medium: {es: Empleadores medianos (11 o más personas), en: Medium employers (11 or more)}
+      denue_manufacturing: {es: Manufactura, en: Manufacturing}
+      activity_centre_essentials_local: {es: "Centro de actividad: esenciales (local, 300 m)", en: "Activity centre: essentials (local, 300 m)"}
+      activity_centre_essentials_complete: {es: "Centro de actividad: esenciales (completo, 300 m)", en: "Activity centre: essentials (complete, 300 m)"}
+      activity_centre_health_all: {es: "Centro de actividad: salud (300 m)", en: "Activity centre: health (300 m)"}
+      activity_centre_civic_all: {es: "Centro de actividad: cívico (300 m)", en: "Activity centre: civic (300 m)"}
+      activity_centre_jobs_local: {es: "Centro de actividad: empleo (local, 300 m)", en: "Activity centre: jobs (local, 300 m)"}
+      activity_centre_jobs_complete: {es: "Centro de actividad: empleo (completo, 300 m)", en: "Activity centre: jobs (complete, 300 m)"}
+      activity_centre_services_local: {es: "Centro de actividad: servicios (local, 300 m)", en: "Activity centre: services (local, 300 m)"}
+      activity_centre_services_complete: {es: "Centro de actividad: servicios (completo, 300 m)", en: "Activity centre: services (complete, 300 m)"}
+      activity_centre_local: {es: Centro de actividad local (400 m, estándar global), en: Local activity centre (400 m, global standard)}
+      activity_centre_complete: {es: Centro de actividad completo (400 m, estándar global), en: Complete activity centre (400 m, global standard)}
+      all_strict: {es: Todas las categorías (definición estricta), en: All categories (strict definition)}
+      all_lenient: {es: Todas las categorías (definición amplia), en: All categories (lenient definition)}
+      all_essentials_strict: {es: "Esenciales: todas las categorías (estricta)", en: "Essentials: all categories (strict)"}
+      all_essentials_lenient: {es: "Esenciales: todas las categorías (amplia)", en: "Essentials: all categories (lenient)"}
+      all_services_strict: {es: "Servicios: todas las categorías (estricta)", en: "Services: all categories (strict)"}
+      all_services_lenient: {es: "Servicios: todas las categorías (amplia)", en: "Services: all categories (lenient)"}
+      diversity_fresh_food: {es: Diversidad de alimentos frescos, en: Fresh food diversity}
+      diversity_education: {es: Diversidad educativa, en: Education diversity}
+      diversity_health_care: {es: Diversidad de salud y cuidados, en: Health and care diversity}
+      diversity_community_culture_rec: {es: Diversidad comunitaria, cultural y recreativa, en: Community, culture and recreation diversity}
+      core_access: {es: 'Comparación global: acceso a 500 m (OSM)', en: 'Global comparison: access within 500 m (OSM)'}
+      convenience: {es: Tienda de conveniencia (OSM), en: Convenience store (OSM)}
+      denue_ccr_any: {es: 'Comunidad, cultura y recreación, cualquiera (DENUE)', en: 'Community, culture and recreation, any (DENUE)'}
+      diversity_care: {es: Diversidad de servicios de cuidado, en: Care service diversity}
+      walkability_variants: {es: 'Caminabilidad (300 m, y atenuada por confort térmico)', en: 'Walkability (300 m, and attenuated by thermal comfort)'}
+      linked_utci: {es: Confort térmico exterior (UTCI), en: Outdoor thermal comfort (UTCI)}
+      linked_external: {es: Indicadores de los paquetes de trabajo, en: Work package indicators}
+      walkability: {es: Caminabilidad, en: Walkability}
+      urban_heat: {es: Vulnerabilidad al calor urbano, en: Urban heat vulnerability}
+      context: {es: Contexto (población y área), en: Context (population and area)}
+      catchments: {es: Cobertura de servicios de emergencia (línea recta), en: Emergency service coverage (straight line)}
+      composite_uli: {es: Índice de entornos vivibles para Mexicali (provisional), en: Mexicali Liveability Index (provisional)}
+
+    variables:
+      pct_access_500m_convenience_score: {es: Tienda de conveniencia (500 m), en: Convenience store (500 m)}
+      pct_access_500m_fresh_food_market_score: {es: Mercado de alimentos frescos (500 m), en: Fresh food market (500 m)}
+      pct_access_500m_large_public_green_space_score: {es: Gran espacio verde público (500 m), en: Large public green space (500 m)}
+      pct_access_500m_pt_any_score: {es: Transporte público, cualquiera (500 m), en: Public transport, any (500 m)}
+      pct_access_500m_pt_gtfs_any_score: {es: Transporte público GTFS, cualquiera (500 m), en: Public transport GTFS, any (500 m)}
+      pct_access_500m_pt_gtfs_freq_20_score: {es: Transporte público GTFS cada 20 min (500 m), en: Public transport GTFS every 20 min (500 m)}
+      pct_access_500m_pt_gtfs_freq_30_score: {es: Transporte público GTFS cada 30 min (500 m), en: Public transport GTFS every 30 min (500 m)}
+      pct_access_500m_pt_osm_any_score: {es: Transporte público OSM, cualquiera (500 m), en: Public transport OSM, any (500 m)}
+      pct_access_500m_public_open_space_any_score: {es: Espacio público abierto, cualquiera (500 m), en: Public open space, any (500 m)}
+      pct_access_500m_public_open_space_large_score: {es: Espacio público abierto grande (500 m), en: Large public open space (500 m)}
+      local_walkability: {es: Índice de caminabilidad, en: Walkability index}
+      local_daily_living: {es: Vida cotidiana (acceso a lo esencial), en: Daily living (access to essentials)}
+      local_nh_population_density: {es: Densidad de población del vecindario, en: Neighbourhood population density}
+      local_nh_intersection_density: {es: Densidad de intersecciones del vecindario, en: Neighbourhood intersection density}
+      ## Urban heat names follow the Spanish used in the workshop's core
+      ## measure sheet where it supplies one.
+      urban_heat_guhvi: {es: Índice Global de Vulnerabilidad al Calor Urbano (GUHVI), en: Global Urban Heat Vulnerability Index (GUHVI)}
+      urban_heat_guhvi_class: {es: Clase de vulnerabilidad GUHVI, en: GUHVI vulnerability class}
+      urban_heat_exposure_index: {es: Índice de exposición al calor, en: Heat exposure index}
+      urban_heat_sensitivity_index: {es: Índice de sensibilidad al calor, en: Heat sensitivity index}
+      urban_heat_adaptive_capability_index: {es: Índice de capacidad adaptativa, en: Adaptive capability index}
+      urban_heat_land_surface_temp_c: {es: Temperatura de la superficie (°C), en: Land surface temperature (°C)}
+      urban_heat_land_surface_albedo: {es: Albedo de la superficie, en: Land surface albedo}
+      urban_heat_ndvi: {es: NDVI (vegetación), en: NDVI (vegetation)}
+      urban_heat_ndbi: {es: NDBI (superficie construida), en: NDBI (built-up surface)}
+      urban_heat_local_climate_zone_ordered: {es: Zona climática local (ordenada), en: Local climate zone (ordered)}
+      urban_heat_population_density_per_sqkm: {es: Densidad de población (por km²), en: Population density (per km²)}
+      urban_heat_vulnerable_pop_pct: {es: Población vulnerable (%), en: Vulnerable population (%)}
+      urban_heat_child_dependency_ratio: {es: Razón de dependencia infantil, en: Child dependency ratio}
+      urban_heat_subnational_hdi: {es: IDH subnacional, en: Subnational HDI}
+      urban_heat_infant_mortality_rate: {es: Tasa de mortalidad infantil, en: Infant mortality rate}
+      pct_urban_heat_guhvi_class_5_most_vulnerable: {es: Población en la clase GUHVI más vulnerable (%), en: Population in the most vulnerable GUHVI class (%)}
+      pop_est: {es: Población estimada, en: Estimated population}
+      pop_per_sqkm: {es: Población por km², en: Population per km²}
+      area_sqkm: {es: Área (km²), en: Area (km²)}
+      intersection_count: {es: Intersecciones, en: Intersections}
+      intersections_per_sqkm: {es: Intersecciones por km², en: Intersections per km²}
+      ## Straight-line catchments for emergency services (accessibility.euclidean)
+      pct_access_euclid_imip_police_station_15000m: {es: Población a 15 km o menos (línea recta) de una estación de policía (%), en: Population within 15 km (straight line) of a police station (%)}
+      avg_euclid_dist_imip_police_station: {es: Distancia en línea recta a la estación de policía más cercana (m), en: Straight-line distance to the nearest police station (m)}
+      pct_access_euclid_imip_fire_station_75000m: {es: Población a 75 km o menos (línea recta) de una estación de bomberos (%), en: Population within 75 km (straight line) of a fire station (%)}
+      avg_euclid_dist_imip_fire_station: {es: Distancia en línea recta a la estación de bomberos más cercana (m), en: Straight-line distance to the nearest fire station (m)}
+
+  ## Interventions and their impacts, matched to themes.  Drives the
+  ## "¿Por qué importa?" section: what could change this indicator, and what
+  ## the change would do.
+  interventions: MX/Mexicali Liveability/Match intervenciones-A911-REIMAGINA-LIV.xlsx
+
+  ## Design tokens, applied by the viewer as CSS variables.  Taken from the
+  ## workshop materials guide: a warm neutral ground and dark brown-grey type,
+  ## rather than the default cool greys.
+  style:
+    ink: "#4a443c"
+    muted: "#7a7269"
+    line: "#ddd6cb"
+    panel: "#f5f1ea"
+    bg: "#ffffff"
+    accent: "#709e8b"
+    radius: "10px"

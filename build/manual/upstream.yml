@@ -1,0 +1,247 @@
+# Upstream entries: the inputs and sub-indicators the ULI indicators are built
+# from.  Text here describes what the code demonstrably does (functions are
+# cited and resolved to lines at build time); values come from the results.
+#
+#   variables  [sample point variable, area variable, plain description key]
+#   map        area column to map, with its direction
+#   table      a generated table (denue, diversity, guhvi, linkage, euclid,
+#              lts) rendered from the configuration
+#   code       [file, function] pairs
+#   config     needles locating the configuration block quoted
+---
+walkability_components:
+  label: {es: 'Caminabilidad a 300 m y sus componentes', en: 'Walkability within 300 m and its components'}
+  recipes: [R1, R2, R3, R9]
+  about:
+    es: |
+      La caminabilidad del ULI sigue el índice de caminabilidad de GHSCI (Frank et al. 2010), con el puntaje de vida cotidiana juzgado a 300 m, la caminata de cinco minutos de la política de caminabilidad de Mexicali, en lugar de 500 m.
+
+      - **Vida cotidiana a 300 m** (`sp_walk_dl_300`): suma del acceso binario a 300 m a un mercado de alimentos frescos, una tienda de conveniencia (ambos de OpenStreetMap) y una parada de transporte público (IMIP u OpenStreetMap); de 0 a 3. Si falta cualquiera de los tres, el puntaje falta.
+      - **Densidad de población del vecindario** (`sp_local_nh_avg_pop_density`): para cada nodo, la media no ponderada de la densidad de población (personas/km²) de las celdas de 100 m que contienen algún nodo alcanzable a 1,000 m por la red; interpolada a cada punto según su posición en el tramo.
+      - **Densidad de intersecciones del vecindario** (`sp_local_nh_avg_intersection_density`): igual, con intersecciones por km² (intersecciones consolidadas de OSMnx con tolerancia de 12 m).
+      - **Caminabilidad** (`sp_walk_idx_300`): `W = z(DL) + z(densidad de población) + z(densidad de intersecciones)`, puntuaciones z con la desviación estándar muestral sobre todos los puntos de muestra urbanos con valor.
+      - **Caminabilidad atenuada por confort térmico** (`sp_walk_idx_300_tm`): `rango_percentil(W)·(1 − 0.5·h′)`, con `h′` el UTCI diurno medio reescalado de 30 a 50 °C y recortado a 0–1. El rango percentil promedia los empates y va de 0 a 1.
+    en: |
+      The ULI's walkability follows the GHSCI walkability index (Frank et al. 2010), with the daily living score judged within 300 m, the five-minute walk of Mexicali's walkability policy, rather than 500 m.
+
+      - **Daily living within 300 m** (`sp_walk_dl_300`): the sum of binary access within 300 m to a fresh food market, a convenience store (both from OpenStreetMap) and a public transport stop (IMIP or OpenStreetMap); 0 to 3. If any of the three is missing, the score is missing.
+      - **Neighbourhood population density** (`sp_local_nh_avg_pop_density`): for each node, the unweighted mean population density (persons/km²) of the 100 m cells containing any node reachable within 1,000 m along the network; interpolated to each point by its position along the edge.
+      - **Neighbourhood intersection density** (`sp_local_nh_avg_intersection_density`): likewise, with intersections per km² (OSMnx consolidated intersections, 12 m tolerance).
+      - **Walkability** (`sp_walk_idx_300`): `W = z(DL) + z(population density) + z(intersection density)`, z-scores using the sample standard deviation over all urban sample points with a value.
+      - **Walkability attenuated by thermal comfort** (`sp_walk_idx_300_tm`): `percentile_rank(W)·(1 − 0.5·h′)`, where `h′` is the daytime mean UTCI re-scaled from 30 to 50 °C and clipped to 0–1. The percentile rank averages ties and runs from 0 to 1.
+  variables:
+    - [sp_walk_dl_300, walk_dl_300]
+    - [sp_local_nh_avg_pop_density, local_nh_population_density]
+    - [sp_local_nh_avg_intersection_density, local_nh_intersection_density]
+    - [sp_walk_idx_300, walk_idx_300]
+    - [sp_walk_idx_300_tm, walk_idx_300_tm]
+  map: {column: walk_idx_300, direction: higher_is_better}
+  code:
+    - [_11_neighbourhood_analysis.py, compute_nodes_pop_intersect_density]
+    - [_walkability_variants.py, zscore]
+    - [_walkability_variants.py, percentile_rank]
+    - [_walkability_variants.py, rescale]
+    - [_walkability_variants.py, compute_variants]
+  config: ['walkability_variants:']
+
+utci:
+  label: {es: 'Confort térmico exterior (UTCI)', en: 'Outdoor thermal comfort (UTCI)'}
+  recipes: [R7]
+  about:
+    es: |
+      Índice Universal de Clima Térmico modelado por el paquete de trabajo 2 (Rossano Schifanella) con SOLWEIG para el día más caluroso de 2023 (21 de julio; temperatura máxima 48.5 °C), forzado con observaciones del aeropuerto de Mexicali, sobre superficies peatonales, y convertido a UTCI con el polinomio operativo (Bröde et al. 2012). Se entregó resumido para las áreas de referencia (cuadrícula, AGEB, manzanas, lotes y fraccionamientos) y se vincula por identificador. Las unidades con menos de 100 píxeles peatonales se enmascaran (`reliable`).
+
+      - `utci_day_mean`: media del UTCI medio diurno (horas con sol); es el insumo de la atenuación de la caminabilidad y el indicador de confort térmico.
+      - `utci_peak`: media del UTCI máximo diario (efectivamente a las 17:00); vinculado como referencia, no se usa en el índice.
+    en: |
+      Universal Thermal Climate Index modelled by work package 2 (Rossano Schifanella) with SOLWEIG for the hottest day of 2023 (21 July; maximum temperature 48.5 °C), forced by Mexicali airport observations, over pedestrian surfaces, and converted to UTCI with the operational polynomial (Bröde et al. 2012). It was delivered summarised for the reference areas (grid, AGEBs, manzanas, lots and subdivisions) and is linked by identifier. Units with fewer than 100 pedestrian pixels are masked (`reliable`).
+
+      - `utci_day_mean`: unit mean of the daytime mean UTCI (sunlit hours); the input to walkability's attenuation and the thermal comfort indicator.
+      - `utci_peak`: unit mean of the daily maximum UTCI (effectively 17:00); linked for reference, not used in the index.
+  variables:
+    - [sp_utci_day_mean, utci_day_mean]
+    - [sp_utci_peak, utci_peak]
+  map: {column: utci_day_mean, direction: lower_is_better}
+  table: linkage_utci
+  code:
+    - [_linkage_indicators.py, apply_rules]
+    - [_linkage_indicators.py, sample_point_values]
+  config: ['  utci:']
+
+guhvi:
+  label: {es: 'Índice Global de Vulnerabilidad Urbana al Calor (GUHVI) y sus insumos', en: 'Global Urban Heat Vulnerability Index (GUHVI) and its inputs'}
+  recipes: [R8]
+  about:
+    es: |
+      El GUHVI (Turner et al. 2025) se calcula en Google Earth Engine sobre una cuadrícula de análisis. Cada insumo se normaliza mín.–máx. a 0–100 dentro de la región (ponderado por la parte de la celda que no es agua); la razón de dependencia infantil, el IDH subnacional y la mortalidad infantil usan un rango fijo de 0–100.
+
+      - **Exposición al calor (HEI)**: temperatura de la superficie terrestre (Landsat 8, durante los cuatro meses consecutivos más calurosos identificados con cinco años de MODIS).
+      - **Sensibilidad al calor (HSI)**: media con pesos iguales de albedo invertido, NDVI negado, NDBI, zona climática local, densidad de población y porcentaje de población vulnerable.
+      - **Capacidad de adaptación (ACI)**: media con pesos iguales de la razón de dependencia infantil, el IDH subnacional y la tasa de mortalidad infantil.
+      - **GUHVI**: media de los tres; la clase GUHVI son quintiles 1–5.
+
+      El ULI usa los tres subíndices, no el GUHVI global. Cada punto de muestra toma el valor de la celda que lo contiene.
+    en: |
+      The GUHVI (Turner et al. 2025) is computed in Google Earth Engine on an analysis grid. Each input is min–max normalised to 0–100 within the region (weighted by the share of the cell that is not water); the child dependency ratio, subnational HDI and infant mortality use a fixed 0–100 range.
+
+      - **Heat exposure (HEI)**: land surface temperature (Landsat 8, over the hottest four consecutive months identified from five years of MODIS).
+      - **Heat sensitivity (HSI)**: equally weighted mean of inverted albedo, negated NDVI, NDBI, local climate zone, population density and vulnerable population percentage.
+      - **Adaptive capability (ACI)**: equally weighted mean of the child dependency ratio, subnational HDI and infant mortality rate.
+      - **GUHVI**: the mean of the three; the GUHVI class is quintiles 1–5.
+
+      The ULI uses the three sub-indices, not the overall GUHVI. Each sample point takes the value of the cell containing it.
+  variables:
+    - [sp_urban_heat_exposure_index, urban_heat_exposure_index]
+    - [sp_urban_heat_sensitivity_index, urban_heat_sensitivity_index]
+    - [sp_urban_heat_adaptive_capability_index, urban_heat_adaptive_capability_index]
+    - [sp_urban_heat_guhvi, urban_heat_guhvi]
+  map: {column: urban_heat_guhvi, direction: lower_is_better}
+  table: guhvi
+  code:
+    - [_earth_engine_indicators.py, guhvi_analysis]
+    - [_earth_engine_indicators.py, normalise_band]
+  config: ['gee: true']
+
+public_open_space:
+  label: {es: 'Espacio público abierto y grandes espacios verdes públicos', en: 'Public open space and large public green space'}
+  recipes: [R2, R3, R8]
+  about:
+    es: |
+      GHSCI identifica las áreas de espacio abierto a partir de polígonos de OpenStreetMap (reglas de `configuration/osm_open_space.yml`), las agrupa en áreas contiguas y retiene las de acceso público. El agua se excluye del espacio público abierto, de modo que un canal no encadena parques contiguos en un área enorme. El acceso se mide hasta puntos cada 20 m del perímetro del área a los que pasa una calle a menos de 30 m (`aos_public_any_nodes_30m_line`).
+
+      Un **gran espacio verde público** (LPUGS) es un espacio público abierto de al menos 1 ha con NDVI medio anual ≥ 0.2 (Sentinel-2), identificado en Google Earth Engine; sus entradas son el subconjunto de puntos de acceso de esas áreas.
+    en: |
+      GHSCI identifies areas of open space from OpenStreetMap polygons (rules in `configuration/osm_open_space.yml`), clusters them into contiguous areas and retains those with public access. Water is excluded from public open space, so that a canal cannot chain contiguous parks into one enormous area. Access is measured to points every 20 m along the area's perimeter that a street passes within 30 m of (`aos_public_any_nodes_30m_line`).
+
+      A **large public green space** (LPUGS) is a public open space of at least 1 ha with annual mean NDVI ≥ 0.2 (Sentinel-2), identified in Google Earth Engine; its entry points are the subset of access points belonging to those areas.
+  variables:
+    - [sp_walk_nearest_node_public_open_space_any, avg_walk_dist_public_open_space_any]
+    - [sp_access_large_public_green_space_score, pct_access_500m_large_public_green_space_score]
+  code:
+    - [_06_open_space_areas_setup.py, aos_setup_queries]
+    - [_earth_engine_indicators.py, lpugs_analysis]
+    - [_earth_engine_indicators.py, lpugs_indicators]
+  config: ['{name: public_open_space_any,']
+
+blue_space_layer:
+  label: {es: 'Espacios azules naturales', en: 'Natural blue space'}
+  recipes: [R2]
+  about:
+    es: |
+      El espacio azul se deriva de forma independiente del espacio público abierto, con etiquetas de agua de OpenStreetMap en **polígonos y líneas**: los canales y drenes de Mexicali están mapeados mayormente como líneas y nunca entrarían en un proceso basado en polígonos. Se excluyen albercas, parques acuáticos y elementos de acceso privado. Los polígonos se muestrean en su anillo exterior y las líneas a lo largo; se generan puntos cada 20 m y se retienen los que tienen una calle a menos de 30 m (`blue_space_nodes_30m_line`), hasta los que se mide la distancia a pie.
+    en: |
+      Blue space is derived independently of public open space, from OpenStreetMap water tags on both **polygons and lines**: Mexicali's canals and drains are largely mapped as lines and would never enter a polygon-based process. Swimming pools, water parks and private features are excluded. Polygons are sampled along their exterior ring and lines along their length; points are generated every 20 m and those with a street within 30 m are retained (`blue_space_nodes_30m_line`), to which walking distance is measured.
+  variables:
+    - [sp_walk_nearest_node_blue_space, avg_walk_dist_blue_space]
+  code:
+    - [_06_open_space_areas_setup.py, blue_space_criteria]
+    - [_06_open_space_areas_setup.py, blue_space_setup]
+    - [_06_open_space_areas_setup.py, blue_space_nodes_setup_query]
+  config: ['{name: blue_space,']
+
+denue_destinations:
+  label: {es: 'Destinos del DENUE por código SCIAN', en: 'DENUE destinations by SCIAN code'}
+  recipes: [R2]
+  about:
+    es: |
+      Las categorías funcionales de destinos se leen del Directorio Estadístico Nacional de Unidades Económicas (DENUE, INEGI, mayo de 2026) para Baja California, cada una con un filtro OGR por código de actividad SCIAN (`codigo_act`), y se recortan a la región de estudio con su zona de amortiguamiento. Los códigos se derivaron del propio conjunto de datos. Cada establecimiento conserva su código SCIAN como etiqueta, lo que permite subdividir una categoría para las medidas de diversidad. La tabla reproduce los filtros tal como están configurados.
+    en: |
+      Functional destination categories are read from the National Statistical Directory of Economic Units (DENUE, INEGI, May 2026) for Baja California, each with an OGR filter on the SCIAN activity code (`codigo_act`), and clipped to the buffered study region. The codes were derived from the dataset itself. Each establishment keeps its SCIAN code as a tag, so that a category can be subdivided for the diversity measures. The table reproduces the filters as configured.
+  table: denue
+  code:
+    - [_05_compile_destinations.py, compile_poi_destinations]
+  config: ['denue_fresh_food: &denue']
+
+diversity_sets:
+  label: {es: 'Conjuntos de diversidad y sus subtipos', en: 'Diversity sets and their sub-types'}
+  recipes: [R4]
+  about:
+    es: 'Cada conjunto de diversidad declara sus subtipos como filtros SQL sobre la capa de destinos. El número de subtipos `k` es fijo, de modo que las puntuaciones son comparables entre áreas. La tabla reproduce la configuración.'
+    en: 'Each diversity set declares its sub-types as SQL filters on the destinations layer. The number of sub-types `k` is fixed, so that scores are comparable between areas. The table reproduces the configuration.'
+  table: diversity
+  code:
+    - [_accessibility_spec.py, diversity_sets]
+    - [_accessibility_spec.py, normalised_entropy]
+    - [_accessibility_spec.py, richness]
+  config: ['    diversity:']
+
+lts_network:
+  label: {es: 'Red ciclista por nivel de estrés del tráfico (LTS)', en: 'Cycling network by level of traffic stress (LTS)'}
+  recipes: [R6]
+  about:
+    es: |
+      Cada tramo de la red de OpenStreetMap recibe un tipo de infraestructura ciclista (vía exclusiva, sendero compartido, carril separado, carril simple, calle compartida o ninguna), una velocidad (`maxspeed`, o una velocidad por defecto según la clase de vía) y un tránsito diario promedio supuesto (local 750, terciaria 3,000, secundaria 10,000). El LTS se asigna en cascada; gana la primera regla que se cumple:
+
+      | LTS | Reglas (resumen de `assign_lts`) |
+      |---|---|
+      | 1 | vía exclusiva o sendero compartido; vías fuera de calle; carril separado ≤ 50 km/h; carril simple en vía local/terciaria/secundaria con TDPA ≤ 10,000 y ≤ 30 km/h; vía local con TDPA ≤ 2,000 y ≤ 30 km/h |
+      | 2 | carril separado ≤ 60; carril simple ≤ 50 (TDPA ≤ 10,000); carril simple en vía primaria (o TDPA > 10,000) ≤ 40; vía local con TDPA ≤ 750 y ≤ 50 o TDPA ≤ 2,000 y ≤ 40; local/terciaria con TDPA ≤ 3,000 y ≤ 30 |
+      | 3 | carril simple ≤ 60; local con TDPA ≤ 750 y ≤ 60; local/terciaria con TDPA ≤ 3,000 y ≤ 50; secundaria/primaria (o TDPA > 3,000) ≤ 40 |
+      | 4 | cualquier otro caso |
+
+      La red de **bajo estrés** es la de los tramos con LTS ≤ 2 donde se permite circular en bicicleta o desmontar y empujarla; su costo es la longitud (triplicada en los tramos donde hay que desmontar).
+    en: |
+      Each OpenStreetMap network link is given a cycling facility type (bike path, shared path, separated lane, simple lane, shared street or none), a speed (`maxspeed`, or a default by road class) and an assumed average daily traffic (local 750, tertiary 3,000, secondary 10,000). LTS is assigned by cascade; the first rule met wins:
+
+      | LTS | Rules (summary of `assign_lts`) |
+      |---|---|
+      | 1 | bike path or shared path; off-road classes; separated lane ≤ 50 km/h; simple lane on a local/tertiary/secondary road with ADT ≤ 10,000 and ≤ 30 km/h; local road with ADT ≤ 2,000 and ≤ 30 km/h |
+      | 2 | separated lane ≤ 60; simple lane ≤ 50 (ADT ≤ 10,000); simple lane on a primary road (or ADT > 10,000) ≤ 40; local road with ADT ≤ 750 and ≤ 50, or ADT ≤ 2,000 and ≤ 40; local/tertiary with ADT ≤ 3,000 and ≤ 30 |
+      | 3 | simple lane ≤ 60; local with ADT ≤ 750 and ≤ 60; local/tertiary with ADT ≤ 3,000 and ≤ 50; secondary/primary (or ADT > 3,000) ≤ 40 |
+      | 4 | anything else |
+
+      The **low-stress** network is the links with LTS ≤ 2 where cycling, or dismounting to walk the bike, is permitted; its cost is length (tripled on links where one must dismount).
+  variables:
+    - [sp_cycle_safe_nearest_node_fresh_food_pooled, avg_cycle_dist_safe_fresh_food_pooled]
+  code:
+    - [_cycling_lts_network.py, classify_cycleway]
+    - [_cycling_lts_network.py, assign_adt]
+    - [_cycling_lts_network.py, assign_lts]
+    - [_cycling_lts_network.py, add_impedance]
+    - [_cycling_accessibility.py, cycling_poi_distance]
+  config: ['cycling_indicators: true']
+
+pt_stops:
+  label: {es: 'Paradas de transporte público', en: 'Public transport stops'}
+  recipes: [R2]
+  about:
+    es: 'Mexicali no tiene un GTFS, por lo que la capa de equipamiento del IMIP es la fuente local de paradas (categoría de transporte, excluida la terminal interior de carga). Con `replace` en su valor por defecto (falso), se combinan con las paradas identificadas en OpenStreetMap bajo el mismo nombre de destino, `pt_any`.'
+    en: 'Mexicali has no GTFS feed, so the IMIP facilities layer is the local source of stops (transport category, excluding the inland freight terminal). With `replace` at its default (false), they are pooled with stops identified in OpenStreetMap under the same destination name, `pt_any`.'
+  variables:
+    - [sp_walk_nearest_node_pt_any, avg_walk_dist_pt_any]
+  config: ['  pt_any:']
+
+emergency_stations:
+  label: {es: 'Estaciones de policía y bomberos (línea recta)', en: 'Police and fire stations (straight line)'}
+  recipes: [R5]
+  about:
+    es: 'Las estaciones se leen de la capa de equipamiento del IMIP, cada especificación con su propio archivo y filtro, recortadas a la región de estudio ampliada por su distancia máxima y fuera de la región de exclusión (California). La cobertura se mide en línea recta porque los servicios de emergencia no siguen las banquetas.'
+    en: 'Stations are read from the IMIP facilities layer, each specification with its own file and filter, clipped to the study region buffered by its maximum distance and outside the exclusion region (California). Coverage is measured in a straight line because an emergency response does not follow footpaths.'
+  variables:
+    - [sp_euclid_dist_imip_police_station, avg_euclid_dist_imip_police_station]
+    - [sp_euclid_dist_imip_fire_station, avg_euclid_dist_imip_fire_station]
+  table: euclid
+  code:
+    - [_euclidean_accessibility.py, resolve_spec]
+    - [_euclidean_accessibility.py, import_destinations]
+    - [_euclidean_accessibility.py, nearest_distances]
+  config: ['  euclidean:']
+
+work_package_layers:
+  label: {es: 'Indicadores de los paquetes de trabajo (vinculados)', en: 'Work package indicators (linked)'}
+  recipes: [R7]
+  about:
+    es: 'Indicadores preparados por los paquetes de trabajo del ULI (`final_indicators.gpkg`, 22 de septiembre de 2026). El archivo no trae identificadores, así que los elementos se identifican por geometría contra las áreas de referencia: las celdas, AGEB, lotes y fraccionamientos son idénticos a ellas, y las manzanas se emparejan por su mayor traslape (varias partes de una manzana se combinan como media ponderada por área). Los valores se llevan a los puntos de muestra desde la primera capa que tenga uno: la cuadrícula; después los lotes de Condesa a 15 m y las manzanas a 30 m.'
+    en: 'Indicators prepared by the ULI work packages (`final_indicators.gpkg`, 22 September 2026). The file carries no identifiers, so features are identified by geometry against the reference areas: grid cells, AGEBs, lots and subdivisions are identical to them, and manzanas are matched by their largest overlap (several parts of one block are combined as an area-weighted mean). Values are brought down to sample points from the first layer holding one: the grid, then Condesa lots within 15 m and manzanas within 30 m.'
+  variables:
+    - [sp_ext_ndvi, ext_ndvi]
+    - [sp_ext_major_road_length_300m, ext_major_road_length_300m]
+    - [sp_ext_block_perimeter_m, ext_block_perimeter_m]
+    - [sp_ext_economic_sector_diversity, ext_economic_sector_diversity]
+  table: linkage_external
+  code:
+    - [_linkage_indicators.py, match_by_geometry]
+    - [_linkage_indicators.py, combine_matched]
+    - [_linkage_indicators.py, apply_rules]
+    - [_linkage_indicators.py, sample_point_values]
+  config: ['  external:']
